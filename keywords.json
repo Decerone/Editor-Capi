@@ -1,0 +1,71 @@
+{
+    "python": [
+        "def", "class", "import", "from", "return", "print", "if", "else", "elif", 
+        "while", "for", "in", "True", "False", "None", "and", "or", "not", "is", 
+        "try", "except", "finally", "raise", "with", "as", "lambda", "global", 
+        "nonlocal", "assert", "pass", "yield", "break", "continue", "async", "await",
+        "self", "__init__", "super", "len", "range", "str", "int", "float", "list", "dict"
+    ],
+    "javascript": [
+        "function", "var", "let", "const", "return", "console", "if", "else", 
+        "for", "while", "do", "switch", "case", "break", "continue", "default", 
+        "try", "catch", "finally", "throw", "new", "this", "class", "extends", 
+        "super", "import", "export", "from", "async", "await", "null", "undefined", 
+        "true", "false", "typeof", "instanceof", "void", "delete", "document", "window",
+        "alert", "prompt", "JSON", "Math", "map", "filter", "reduce", "forEach"
+    ],
+    "php": [
+        "<?php", "?>", "echo", "print", "function", "class", "public", "private", 
+        "protected", "static", "extends", "implements", "if", "else", "elseif", 
+        "while", "for", "foreach", "switch", "case", "break", "default", "return", 
+        "try", "catch", "throw", "new", "clone", "include", "require", "include_once", 
+        "require_once", "namespace", "use", "global", "isset", "empty", "die", "exit", 
+        "array", "$this", "__construct", "$_GET", "$_POST", "$_SESSION"
+    ],
+    "html": [
+        "html", "head", "body", "title", "meta", "link", "script", "style", 
+        "div", "span", "p", "h1", "h2", "h3", "h4", "h5", "h6", "a", "img", 
+        "ul", "ol", "li", "table", "tr", "td", "th", "thead", "tbody", "form", 
+        "input", "button", "label", "select", "option", "textarea", "br", "hr", 
+        "header", "footer", "nav", "section", "article", "aside", "main", "canvas",
+        "iframe", "<!DOCTYPE html>"
+    ],
+    "css": [
+        "body", "div", "span", "color", "background-color", "font-size", "margin", 
+        "padding", "border", "width", "height", "display", "position", "top", "left", 
+        "right", "bottom", "flex", "grid", "justify-content", "align-items", "text-align", 
+        "font-family", "font-weight", "cursor", "hover", "active", "focus", "none", 
+        "block", "inline-block", "absolute", "relative", "fixed", "sticky", "!important"
+    ],
+    "sql": [
+        "SELECT", "FROM", "WHERE", "INSERT", "INTO", "VALUES", "UPDATE", "SET", 
+        "DELETE", "CREATE", "TABLE", "DROP", "ALTER", "ADD", "COLUMN", "PRIMARY", 
+        "KEY", "FOREIGN", "REFERENCES", "JOIN", "INNER", "LEFT", "RIGHT", "OUTER", 
+        "ON", "GROUP", "BY", "ORDER", "HAVING", "LIMIT", "OFFSET", "DISTINCT", "AS", 
+        "AND", "OR", "NOT", "NULL", "IS", "IN", "BETWEEN", "LIKE", "COUNT", "SUM", "AVG"
+    ],
+    "rust": [
+        "fn", "let", "mut", "if", "else", "match", "loop", "while", "for", "in", 
+        "return", "break", "continue", "struct", "enum", "impl", "trait", "type", 
+        "pub", "use", "mod", "crate", "super", "self", "Self", "where", "move", 
+        "async", "await", "dyn", "ref", "static", "const", "unsafe", "true", "false", 
+        "Option", "Result", "Some", "None", "Ok", "Err", "String", "Vec", "println!"
+    ],
+    "json": [
+        "true", "false", "null", "{", "}", "[", "]"
+    ],
+    "java": [
+        "public", "private", "protected", "class", "interface", "extends", "implements", 
+        "static", "final", "void", "int", "double", "String", "boolean", "if", "else", 
+        "for", "while", "do", "switch", "case", "break", "return", "try", "catch", 
+        "finally", "throw", "throws", "new", "this", "super", "import", "package", 
+        "System.out.println", "null", "true", "false"
+    ],
+    "cpp": [
+        "include", "iostream", "using", "namespace", "std", "int", "float", "double", 
+        "char", "void", "bool", "if", "else", "for", "while", "do", "switch", "case", 
+        "break", "return", "class", "struct", "public", "private", "protected", 
+        "virtual", "override", "new", "delete", "cout", "cin", "endl", "true", "false",
+        "nullptr", "const", "static", "template", "typename"
+    ]
+}
