@@ -1,0 +1,40 @@
+name: Compilar Python a Windows
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Descargar tu código
+      uses: actions/checkout@v4
+
+    - name: Instalar Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10' 
+
+    - name: Instalar Dependencias
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        # Si tienes un archivo requirements.txt, esto lo instala:
+        if (Test-Path requirements.txt) { pip install -r requirements.txt }
+        # Si NO tienes requirements.txt pero usas librerías (ej. Tkinter, PyGame),
+        # descomenta la línea de abajo y pon las librerías:
+        # pip install nombre_libreria1 nombre_libreria2
+
+    - name: Crear Ejecutable (.exe)
+      # CAMBIA 'main.py' POR EL NOMBRE DE TU ARCHIVO PRINCIPAL
+      # --onefile: crea un solo archivo .exe
+      # --windowed: oculta la consola negra (ideal para apps con interfaz)
+      run: pyinstaller --onefile --windowed editor_app.py
+
+    - name: Subir el .exe listo
+      uses: actions/upload-artifact@v4
+      with:
+        name: CapiEditor-Windows
+        path: dist/*.exe
