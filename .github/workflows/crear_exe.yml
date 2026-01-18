@@ -1,4 +1,4 @@
-name: Compilar Python a Windows
+name: Compilar Editor Capi
 
 on:
   push:
@@ -9,7 +9,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Descargar tu código
+    - name: Descargar código
       uses: actions/checkout@v4
 
     - name: Instalar Python
@@ -19,22 +19,24 @@ jobs:
 
     - name: Instalar Dependencias
       run: |
-        python -m pip install --upgrade pip
+        pip install --upgrade pip
         pip install pyinstaller
-        # Si tienes un archivo requirements.txt, esto lo instala:
         if (Test-Path requirements.txt) { pip install -r requirements.txt }
-        # Si NO tienes requirements.txt pero usas librerías (ej. Tkinter, PyGame),
-        # descomenta la línea de abajo y pon las librerías:
-        # pip install nombre_libreria1 nombre_libreria2
 
-    - name: Crear Ejecutable (.exe)
-      # CAMBIA 'main.py' POR EL NOMBRE DE TU ARCHIVO PRINCIPAL
-      # --onefile: crea un solo archivo .exe
-      # --windowed: oculta la consola negra (ideal para apps con interfaz)
-      run: pyinstaller --onefile --windowed editor_app.py
+    - name: Crear Aplicación (Modo Carpeta)
+      # --onedir: Crea una carpeta en lugar de un solo archivo
+      # --icon: Le pone tu logo al .exe
+      # --name: Nombre de la carpeta final y del .exe
+      # --noconsole: Quita la pantalla negra de fondo (igual que windowed)
+      run: pyinstaller --onedir --noconsole --icon=icono.ico --name=CapiEditor main.py
 
-    - name: Subir el .exe listo
+    # Paso extra: Copiar el icono dentro de la carpeta (opcional, pero se ve bien)
+    - name: Copiar recursos extra
+      run: |
+        copy icono.ico dist/CapiEditor/
+
+    - name: Subir el resultado
       uses: actions/upload-artifact@v4
       with:
-        name: CapiEditor-Windows
-        path: dist/*.exe
+        name: CapiEditor-Portable
+        path: dist/CapiEditor  # Ahora subimos la carpeta entera
