@@ -1,34 +1,109 @@
 {
     "app_settings": {
         "app_name": "EDITOR CAPI",
-        "app_version": "v1.0",
-        "theme": "Dark",
-        "font_size": 12,
-        "tab_width": 2,
-        "minimap_enabled": true,
-        "autosave_enabled": true
+        "app_version": "v1.9 Gold"
     },
     "welcome_screen": {
-        "welcome_title": "Bienvenido a Editor Capi v1.0",
-        "welcome_message": "Tu entorno de desarrollo profesional, ligero y potente.",
+        "welcome_title": "  ____    _    ____  ___   _____ ____  ___ _____ ___  ____  \n / ___|  / \\  |  _ \\|_ _| | ____|  _ \\|_ _|_   _/ _ \\|  _ \\ \n| |     / _ \\ | |_) || |  |  _| | | | || |  | || | | | |_) |\n| |___ / ___ \\|  __/ | |  | |___| |_| || |  | || |_| |  _ < \n \\____/_/   \\_\\_|   |___| |_____|____/|___| |_| \\___/|_| \\_\\",
         "features_list": [
-            "✅ Minimapa de Código (Persistente)",
-            "✅ Autocompletado Dinámico",
-            "✅ Auto-Guardado Inteligente",
-            "✅ Terminal Integrada",
-            "✅ Soporte Multi-Lenguaje"
+            "============================================================",
+            "🚀 CARACTERÍSTICAS PRINCIPALES",
+            "============================================================",
+            "",
+            "• 🐍 SOPORTE: Python, JS, HTML, CSS, SQL, Rust, C++.",
+            "• 📁 GESTIÓN: Explorador de archivos con iconos Emoji.",
+            "• 💻 TERMINAL: Ejecución integrada de scripts.",
+            "• 🎨 TEMAS: Dark, Light, Monokai y Dracula.",
+            "• ⚡ VELOCIDAD: Optimizado para rendimiento rápido.",
+            "",
+            "¡Presiona Ctrl+N para empezar!"
         ]
     },
-    "banner_config": {
-        "display_text": "CAPI EDITOR",
-        "ansi_color": "\u001b[31m",
-        "reset_color": "\u001b[0m",
-        "banner_lines": [
-            "   ____    _    ____  ___   _____ ____  ___ _____ ___  ____  ",
-            "  / ___|  / \\  |  _ \\|_ _| | ____|  _ \\|_ _|_   _/ _ \\|  _ \\ ",
-            " | |     / _ \\ | |_) || |  |  _| | | | || |  | || | | | |_) |",
-            " | |___ / ___ \\|  __/ | |  | |___| |_| || |  | || |_| |  _ < ",
-            "  \\____/_/   \\_\\_|   |___| |_____|____/|___| |_| \\___/|_| \\_\\"
-        ]
-    }
+    "shortcuts_guide": [
+        {
+            "category": "Archivo",
+            "action": "Nuevo Archivo",
+            "keys": "Ctrl+N"
+        },
+        {
+            "category": "Archivo",
+            "action": "Abrir Archivo",
+            "keys": "Ctrl+O"
+        },
+        {
+            "category": "Archivo",
+            "action": "Guardar",
+            "keys": "Ctrl+S"
+        },
+        {
+            "category": "Archivo",
+            "action": "Guardar Como",
+            "keys": "Menú Archivo"
+        },
+        {
+            "category": "Archivo",
+            "action": "Salir",
+            "keys": "Ctrl+Q"
+        },
+        {
+            "category": "Edición",
+            "action": "Deshacer",
+            "keys": "Ctrl+Z"
+        },
+        {
+            "category": "Edición",
+            "action": "Rehacer",
+            "keys": "Ctrl+Y"
+        },
+        {
+            "category": "Edición",
+            "action": "Cortar",
+            "keys": "Ctrl+X"
+        },
+        {
+            "category": "Edición",
+            "action": "Copiar",
+            "keys": "Ctrl+C"
+        },
+        {
+            "category": "Edición",
+            "action": "Pegar",
+            "keys": "Ctrl+V"
+        },
+        {
+            "category": "Edición",
+            "action": "Seleccionar Todo",
+            "keys": "Ctrl+A"
+        },
+        {
+            "category": "Edición",
+            "action": "Buscar",
+            "keys": "Ctrl+F"
+        },
+        {
+            "category": "Navegación",
+            "action": "Ir a Línea",
+            "keys": "Ctrl+G"
+        },
+        {
+            "category": "Ejecución",
+            "action": "Ejecutar Script",
+            "keys": "F5"
+        },
+        {
+            "category": "Ver",
+            "action": "Minimapa",
+            "keys": "Menú Ver"
+        },
+        {
+            "category": "Ver",
+            "action": "Terminal",
+            "keys": "Menú Ejecutar"
+        },
+        {
+            "category": "Ayuda",
+            "action": "Ver Atajos",
+            "keys": "Ctrl+Shift+B"
+        }
+    ]
 }
