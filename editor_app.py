@@ -3,7 +3,7 @@ import os
 import json
 
 # --- IMPORTACIONES DE QT ---
-from PySide6.QtCore import (QSize, Qt, QRect, QCoreApplication, QTimer, QFileInfo)
+from PySide6.QtCore import (QSize, Qt, QRect, QTimer, QFileInfo, QDir)
 from PySide6.QtGui import (QAction, QActionGroup, QColor, QTextCharFormat, QFont, QFontMetricsF,
                            QSyntaxHighlighter, QTextCursor, QPainter, QIcon, QKeySequence)
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -36,15 +36,9 @@ CONFIG_FILE = "config.json"
 # =========================================================================
 
 def get_data_path(filename):
-    """
-    Devuelve la ruta física real donde está el ejecutable o script.
-    Se usa para GUARDAR archivos (session.json) y que no se borren.
-    """
     if getattr(sys, 'frozen', False):
-        # Si es un .exe compilado
         base_path = os.path.dirname(sys.executable)
     else:
-        # Si es script .py
         base_path = os.getcwd()
     return os.path.join(base_path, filename)
 
@@ -337,15 +331,29 @@ class PySideEditor(QMainWindow):
         if self.notebook.count() == 0: self.show_welcome_tab()
 
     def _load_config(self):
-        # Para leer config.json (estático), usamos resource_path
         path = resource_path(CONFIG_FILE)
-        return json.load(open(path, encoding='utf-8')) if os.path.exists(path) else {}
+        # --- FIX: CARGA SEGURA PARA EVITAR CRASH SI EL JSON TIENE ERRORES ---
+        try:
+            if os.path.exists(path):
+                with open(path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"Error cargando config: {e}")
+        return {
+            "app_settings": {"app_name": "Editor Capi", "app_version": "v1.8"},
+            "welcome_screen": {"welcome_title": "Bienvenido", "features_list": []},
+            "shortcuts_guide": []
+        }
 
     def setup_ui(self):
         main_splitter = QSplitter(Qt.Horizontal); self.setCentralWidget(main_splitter)
-        self.file_model = EmojiFileSystemModel(); self.file_model.setRootPath(self.root_dir)
+        self.file_model = EmojiFileSystemModel()
+        # --- FIX: ESTABLECER ROOTPATH GENERAL PARA QUE EL ÁRBOL CARGUE CORRECTAMENTE ---
+        self.file_model.setRootPath(QDir.rootPath()) 
         self.tree_view = FileSidebar(self); self.tree_view.setModel(self.file_model)
-        self.tree_view.setRootIndex(self.file_model.index(self.root_dir))
+        # --- FIX: MOSTRAR CARPETA RAÍZ EN EL ÁRBOL ---
+        self.update_sidebar_root(self.root_dir)
+        
         for i in range(1, self.file_model.columnCount()): self.tree_view.hideColumn(i)
         self.tree_view.clicked.connect(lambda idx: self._open_file(self.file_model.filePath(idx)) if os.path.isfile(self.file_model.filePath(idx)) else None)
         self.tree_view.setFixedWidth(250)
@@ -363,6 +371,63 @@ class PySideEditor(QMainWindow):
         self.console = EditorTerminal(self, THEMES['Dark']); self.console.hide()
         self.editor_console_splitter.addWidget(self.console)
         self.editor_console_splitter.setStretchFactor(0, 1)
+
+    def update_sidebar_root(self, path):
+        """
+        Actualiza el sidebar para mostrar SOLO la carpeta del proyecto.
+        Usa un QTimer para esperar a que el modelo cargue los archivos del disco.
+        """
+        if not path or not os.path.exists(path):
+            return
+
+        self.root_dir = path
+        parent_dir = os.path.dirname(path)
+        
+        # 1. Establecemos la ruta en el modelo y la raíz visual en el padre
+        self.file_model.setRootPath(parent_dir)
+        parent_idx = self.file_model.index(parent_dir)
+        self.tree_view.setRootIndex(parent_idx)
+
+        # 2. Función interna que aplicará el filtro una vez cargados los datos
+        def apply_filter():
+            model = self.tree_view.model()
+            # Iteramos por los elementos del padre (Escritorio)
+            for i in range(model.rowCount(parent_idx)):
+                child_idx = model.index(i, 0, parent_idx)
+                child_path = model.filePath(child_idx)
+                
+                # Si el archivo/carpeta no es nuestro proyecto, lo escondemos
+                if child_path != path:
+                    self.tree_view.setRowHidden(i, parent_idx, True)
+                else:
+                    self.tree_view.setRowHidden(i, parent_idx, False)
+            
+            # Expandimos automáticamente nuestra carpeta de proyecto
+            self.tree_view.expand(self.file_model.index(path))
+
+        # 3. Ejecutamos el filtro con un pequeño retraso (200 milisegundos)
+        # Esto evita que rowCount devuelva 0 al darle tiempo al modelo a cargar.
+        QTimer.singleShot(200, apply_filter)
+        """Actualiza el sidebar para que muestre SOLO la carpeta del proyecto."""
+        if not path or not os.path.exists(path): return
+        
+        # Obtenemos el padre para que la carpeta del proyecto sea visible como nodo
+        parent_dir = os.path.dirname(path)
+        parent_idx = self.file_model.index(parent_dir)
+        self.tree_view.setRootIndex(parent_idx)
+        
+        # Filtro: Escondemos todo lo que no sea nuestro proyecto en el Escritorio
+        model = self.tree_view.model()
+        for i in range(model.rowCount(parent_idx)):
+            child_idx = model.index(i, 0, parent_idx)
+            child_path = model.filePath(child_idx)
+            if child_path != path:
+                self.tree_view.setRowHidden(i, parent_idx, True)
+            else:
+                self.tree_view.setRowHidden(i, parent_idx, False)
+
+        self.tree_view.expand(self.file_model.index(path))
+        self.root_dir = path
 
     def toggle_console(self):
         if self.console.isVisible(): self.console.hide()
@@ -581,8 +646,8 @@ class PySideEditor(QMainWindow):
             tab = self.notebook.widget(i)
             if isinstance(tab, EditorTab):
                 tab.editor.apply_theme(theme_name)
+                # --- FIX: ACTUALIZAR TEMA DEL MINIMAPA ---
                 tab.minimap.apply_theme(colors)
-        # --- FIXED: GUARDAR SESION AL CAMBIAR TEMA ---
         self.save_session()
     
     def perform_autosave(self):
@@ -605,9 +670,7 @@ class PySideEditor(QMainWindow):
     def select_folder(self):
         path = QFileDialog.getExistingDirectory(self, "Seleccionar Carpeta", self.root_dir)
         if path:
-            self.root_dir = path
-            self.file_model.setRootPath(self.root_dir)
-            self.tree_view.setRootIndex(self.file_model.index(self.root_dir))
+            self.update_sidebar_root(path)
             self.save_session()
 
     def create_new_folder_global(self):
@@ -645,7 +708,6 @@ class PySideEditor(QMainWindow):
         dialog = ShortcutsDialog(shortcuts, self)
         dialog.exec()
 
-    # --- SAVE / LOAD SESSION (RESTAURADOS Y CORREGIDOS) ---
     def save_session(self):
         open_files = []
         for i in range(self.notebook.count()):
@@ -663,14 +725,12 @@ class PySideEditor(QMainWindow):
         }
         
         try:
-            # Usamos get_data_path para que escriba al lado del ejecutable (NO en temp)
             path = get_data_path(SESSION_FILE)
             with open(path, 'w') as f:
                 json.dump(data, f, indent=4)
         except Exception: pass
 
     def load_session(self):
-        # Usamos get_data_path para leer del lado del ejecutable
         path = get_data_path(SESSION_FILE)
         if not os.path.exists(path): return
         try:
@@ -681,16 +741,11 @@ class PySideEditor(QMainWindow):
             self.current_theme = data.get('theme', 'Dark')
             self.minimap_enabled = data.get('minimap_enabled', True)
             
-            # Aplicar configuraciones
             self.apply_theme(self.current_theme)
             
-            # Restaurar carpeta
             if 'root_dir' in data and os.path.isdir(data['root_dir']):
-                self.root_dir = data['root_dir']
-                self.file_model.setRootPath(self.root_dir)
-                self.tree_view.setRootIndex(self.file_model.index(self.root_dir))
+                self.update_sidebar_root(data['root_dir'])
             
-            # Restaurar pestañas
             if 'open_files' in data:
                 for file_path in data['open_files']:
                     if os.path.exists(file_path):

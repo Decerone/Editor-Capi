@@ -1,8 +1,10 @@
 {
-    "root_dir": "/home/decerone/Escritorio/Editor Capi",
-    "open_files": [],
-    "theme": "Dark",
+    "root_dir": "/home/decerone/Escritorio/htdocs",
+    "open_files": [
+        "/home/decerone/Escritorio/proyecto_php/index.php"
+    ],
+    "theme": "Dracula",
     "font_size": 12,
     "tab_width": 4,
-    "minimap_enabled": true
+    "minimap_enabled": false
 }

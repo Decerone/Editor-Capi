@@ -10,7 +10,7 @@ def get_file_emoji(file_name, is_dir):
     emoji_map = {
         '.py': '🐍', '.php': '🐘', '.html': '🌐', '.css': '🎨', '.js': '📜', 
         '.json': '🔧', '.sql': '🗄️', '.txt': '📄', '.md': '📝', '.c': '🇨', 
-        '.cpp': '🇨', '.java': '☕', '.sh': '💻', '.png': '🖼️', '.zip': '📦'
+        '.cpp': '🇨', '.java': '☕', '.sh': '💻', '.png': '🖼️', '.zip': '📦', '.rs': '🦀'
     }
     return emoji_map.get(ext, "📄")
 
@@ -28,6 +28,9 @@ class EmojiFileSystemModel(QFileSystemModel):
         if role == Qt.DecorationRole and index.isValid():
             file_name = self.fileName(index)
             is_dir = self.isDir(index)
+            # --- CORRECCIÓN: Si el nombre está vacío (raíz) o es dir, forzar carpeta ---
+            if is_dir or not file_name:
+                return emoji_to_icon("📁")
             return emoji_to_icon(get_file_emoji(file_name, is_dir))
         return super().data(index, role)
 
@@ -48,7 +51,7 @@ class FileSidebar(QTreeView):
         fg = colors.get('fg', '#cccccc')
         sel_bg = colors.get('select_bg', '#37373d')
         self.setStyleSheet(f"""
-            QTreeView {{ background-color: {bg}; color: {fg}; border: none; font-size: 13px; }}
+            QTreeView {{ background-color: {bg}; color: {fg}; border: none; font-size: 13px; outline: none; }}
             QTreeView::item {{ padding: 4px; }}
             QTreeView::item:hover {{ background-color: {sel_bg}80; }}
             QTreeView::item:selected {{ background-color: {sel_bg}; color: {fg}; }}
@@ -59,6 +62,7 @@ class FileSidebar(QTreeView):
         if not index.isValid(): return
         path = self.model().filePath(index)
         menu = QMenu()
+        menu.setStyleSheet("QMenu { background-color: #2d2d2d; color: white; border: 1px solid #3e3e42; } QMenu::item:selected { background-color: #094771; }")
         
         actions = [
             ("📄 Nuevo Archivo", lambda: self.new_file(path)),
