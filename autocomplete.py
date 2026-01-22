@@ -1,47 +1,35 @@
-import json
-import os
-from PySide6.QtCore import Qt, QStringListModel
 from PySide6.QtWidgets import QCompleter
-from PySide6.QtGui import QTextCursor
-from utils import resource_path  # Importamos la ruta segura
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QStandardItemModel, QStandardItem
 
-KEYWORDS_FILE = "keywords.json"
+class AutoCompleter(QCompleter):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setCompletionMode(QCompleter.PopupCompletion)
+        self.setCaseSensitivity(Qt.CaseInsensitive)
+        self.setFilterMode(Qt.MatchStartsWith) # Importante: Qt filtra por nosotros
+        
+        # Modelo visual
+        self.model = QStandardItemModel(self)
+        self.setModel(self.model)
 
-class AutoCompleter:
-    def __init__(self, editor):
-        self.editor = editor
-        self.completer = None
-        self.model = QStringListModel()
-        self.keywords_data = self._load_keywords()
+    def load_keywords(self, keywords_list):
+        """Carga una lista estática de palabras (para JS, HTML, etc)"""
+        self.model.clear()
+        keywords_list.sort()
+        for word in keywords_list:
+            item = QStandardItem(word)
+            item.setData(" [kw] ", Qt.ToolTipRole)
+            self.model.appendRow(item)
 
-    def _load_keywords(self):
-        # Usamos resource_path para encontrar el JSON al compilar
-        path = resource_path(KEYWORDS_FILE)
-        if not os.path.exists(path):
-            return {}
-        try:
-            with open(path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except: return {}
-
-    def setup(self, language="text"):
-        words = self.keywords_data.get(language, [])
-        self.completer = QCompleter(words, self.editor)
-        self.completer.setModel(self.model)
-        self.model.setStringList(words)
-        self.completer.setWidget(self.editor)
-        self.completer.setCompletionMode(QCompleter.PopupCompletion)
-        self.completer.setCaseSensitivity(Qt.CaseInsensitive)
-        self.completer.activated.connect(self.insert_completion, Qt.QueuedConnection)
-
-    def update_model(self, language):
-        if language == 'py': language = 'python'
-        if language == 'js': language = 'javascript'
-        words = self.keywords_data.get(language, [])
-        self.model.setStringList(words)
-
-    def insert_completion(self, text):
-        cursor = self.editor.textCursor()
-        cursor.select(QTextCursor.WordUnderCursor)
-        cursor.insertText(text)
-        self.editor.setTextCursor(cursor)
+    def update_jedi_completions(self, completions):
+        """Carga sugerencias dinámicas de Python (Jedi)"""
+        self.model.clear()
+        completions.sort(key=lambda x: x['name'])
+        for data in completions:
+            item = QStandardItem(data['name'])
+            # Icono según tipo
+            kind = data.get('type', '')
+            icon_text = " [ƒ] " if kind == 'function' else " [c] " if kind == 'class' else " [v] "
+            item.setData(icon_text, Qt.ToolTipRole)
+            self.model.appendRow(item)

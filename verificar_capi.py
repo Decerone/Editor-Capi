@@ -55,3 +55,7 @@ def verificar_sistema():
 
 if __name__ == "__main__":
     verificar_sistema()
+    
+    
+
+     
