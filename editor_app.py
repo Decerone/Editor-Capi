@@ -1,4 +1,4 @@
-import sys, os, json, shutil
+import sys, os, json, shutil,re  # <--- INDISPENSABLE para que esto funcione linea de imports
 from PySide6.QtCore import (Qt, QTimer, QDir, QSize, QRect, QPoint, QThread, Signal)
 from PySide6.QtGui import (QAction, QColor, QTextCharFormat, QFont, QFontMetricsF,
                            QSyntaxHighlighter, QTextCursor, QPainter, QKeyEvent, QIcon, QPixmap, QTextFormat) 
@@ -132,24 +132,33 @@ class JediWorker(QThread):
         except: self.finished.emit([])
 
 # ================= CLASE CODE EDITOR =================
-
 class CodeEditor(QPlainTextEdit): 
     def __init__(self, parent, theme, size, tabs):
         super().__init__(parent)
         self.theme_name = theme
         self.line_number_area = LineNumberArea(self)
         self.highlighter = PySideHighlighter(self.document(), "text", theme)
-        self.completer = AutoCompleter(self)
+        
+        # Configuración del Autocompletado
+        self.completer = AutoCompleter(self) 
         self.completer.setWidget(self)
         self.completer.activated.connect(self.insert_completion)
+        
         self.tab_width = tabs
         self.file_path = None
         self.current_lang = "text"
         self.auto_pairs = {'(': ')', '{': '}', '[': ']', '"': '"', "'": "'"}
-        self.worker = None
+        
+        # Almacén de palabras clave estáticas del JSON
+        self.base_keywords = [] 
+        
+        # Hilo para Jedi (Python)
+        self.worker = None 
         self.timer_jedi = QTimer()
         self.timer_jedi.setSingleShot(True)
         self.timer_jedi.timeout.connect(self.run_jedi_analysis)
+
+        # Configuración visual
         self.setLineWrapMode(QPlainTextEdit.NoWrap)
         self.update_font(size, tabs)
         self.blockCountChanged.connect(self.update_line_number_area_width)
@@ -159,77 +168,222 @@ class CodeEditor(QPlainTextEdit):
         self.apply_theme(theme)
 
     def set_code_language(self, lang_alias):
+        """Configura el lenguaje y carga las palabras base del JSON"""
         self.current_lang = lang_alias.lower()
         self.highlighter.set_language(self.current_lang)
+        
+        # Cargar palabras clave estáticas desde KEYWORDS_DB (Cargado al inicio del script)
         if self.current_lang != 'python':
-            cw = []
-            if self.current_lang == 'php': 
-                cw = KEYWORDS_DB.get('php', []) + KEYWORDS_DB.get('html', [])
-            elif self.current_lang in ['html', 'htm']: 
-                cw = KEYWORDS_DB.get('html', []) + KEYWORDS_DB.get('css', []) + KEYWORDS_DB.get('javascript', [])
+            if self.current_lang == 'php':
+                self.base_keywords = KEYWORDS_DB.get('php', []) + KEYWORDS_DB.get('html', [])
+            elif self.current_lang in ['html', 'htm']:
+                self.base_keywords = KEYWORDS_DB.get('html', []) + KEYWORDS_DB.get('css', []) + KEYWORDS_DB.get('javascript', [])
             else:
-                k = self.current_lang
-                if k == 'js': k = 'javascript'
-                cw = KEYWORDS_DB.get(k, [])
-            if cw: self.completer.load_keywords(sorted(list(set(cw))))
+                k = 'javascript' if self.current_lang == 'js' else self.current_lang
+                self.base_keywords = KEYWORDS_DB.get(k, [])
+        else:
+            self.base_keywords = [] # Python usa Jedi preferentemente
 
-    def keyPressEvent(self, e: QKeyEvent):
-        if self.completer.popup().isVisible() and e.key() in (Qt.Key_Enter, Qt.Key_Return, Qt.Key_Tab, Qt.Key_Escape): 
-            e.ignore()
-            return
-        if e.text() in self.auto_pairs:
-            c = self.textCursor()
-            c.insertText(e.text() + self.auto_pairs[e.text()])
-            c.movePosition(QTextCursor.Left)
-            self.setTextCursor(c)
-            return
-        super().keyPressEvent(e)
-        if self.current_lang == 'python':
-            if e.text().isalnum() or e.text() == "." or ((e.modifiers() & Qt.ControlModifier) and e.key() == Qt.Key_Space): 
-                self.timer_jedi.start(200)
-        elif e.text().isalnum() or ((e.modifiers() & Qt.ControlModifier) and e.key() == Qt.Key_Space): 
-            self.show_static_suggestions()
+    def get_dynamic_words(self):
+        """Escanea el código actual para aprender variables y funciones del usuario"""
+        text = self.toPlainText()
+        # Patrón base: palabras que empiecen por letra/guion bajo y tengan min 3 caracteres
+        pattern = r'\b[a-zA-Z_]\w{2,}\b'
+        
+        if self.current_lang == 'php':
+            pattern = r'(?:\$?[a-zA-Z_]\w{2,})'
+        elif self.current_lang in ['css', 'scss']:
+            pattern = r'(?:[\.#]?[a-zA-Z_][\w-]{2,})'
 
+        try:
+            return list(set(re.findall(pattern, text)))
+        except:
+            return []
+
+    # ------------------------------------------------------------------
+    # 1. LÓGICA DE SUGERENCIAS (Soporte CSS, PHP, JS, HTML)
+    # ------------------------------------------------------------------
     def show_static_suggestions(self):
         tc = self.textCursor()
         tc.select(QTextCursor.WordUnderCursor)
         prefix = tc.selectedText()
+        
+        # Mapa de símbolos activadores por lenguaje
+        # PHP: $var
+        # CSS/LESS/SCSS: .clase, #id, @media, $var(scss)
+        # JS/TS: No suelen llevar prefijos obligatorios, pero permitimos _
+        symbol_map = {
+            'php': ['$'],
+            'css': ['.', '#', '@'],
+            'scss': ['.', '#', '@', '$'],
+            'less': ['.', '#', '@'],
+            'javascript': [], # JS puro no usa prefijos especiales obligatorios
+            'html': []
+        }
+        
+        target_symbols = symbol_map.get(self.current_lang, [])
+
+        # HACK: Mirar atrás para capturar el símbolo
+        if target_symbols:
+            pos = tc.selectionStart()
+            if pos > 0:
+                char_before = self.document().characterAt(pos - 1)
+                if char_before in target_symbols:
+                    prefix = char_before + prefix
+
         if len(prefix) < 1: 
             self.completer.popup().hide()
             return
-        self.completer.setCompletionPrefix(prefix)
-        if self.completer.completionCount() > 0:
-            cr = self.cursorRect()
-            cr.setWidth(self.completer.popup().sizeHintForColumn(0) + 30)
-            self.completer.complete(cr)
 
+        # Combinar + Filtrar
+        dynamic = self.get_dynamic_words()
+        combined = list(set(self.base_keywords + dynamic))
+        
+        # Filtro estricto: el prefijo debe coincidir (ej: ".con" matchea ".container")
+        filtered = [w for w in combined if w.lower().startswith(prefix.lower())]
+        
+        if not filtered:
+            self.completer.popup().hide()
+            return
+
+        self.completer.load_keywords(sorted(filtered))
+        self.completer.setCompletionPrefix(prefix)
+        
+        cr = self.cursorRect()
+        cr.setWidth(self.completer.popup().sizeHintForColumn(0) + 40)
+        self.completer.complete(cr)
+     
+    # --- Métodos de apoyo ---
     def run_jedi_analysis(self):
         if self.worker and self.worker.isRunning(): return
         c = self.textCursor()
+        # Solo ejecutamos si hay un archivo o contenido
         self.worker = JediWorker(self.toPlainText(), c.blockNumber()+1, c.columnNumber(), self.file_path)
         self.worker.finished.connect(self.handle_jedi_results)
-        self.worker.finished.connect(self.worker.deleteLater)
         self.worker.start()
 
     def handle_jedi_results(self, r):
-        if not r: return
+        if not r: 
+            self.completer.popup().hide()
+            return
         self.completer.update_jedi_completions(r)
         tc = self.textCursor()
         tc.select(QTextCursor.WordUnderCursor)
-        prefix = tc.selectedText()
-        self.completer.setCompletionPrefix(prefix)
+        self.completer.setCompletionPrefix(tc.selectedText())
         cr = self.cursorRect()
-        cr.setWidth(self.completer.popup().sizeHintForColumn(0) + 30)
+        cr.setWidth(self.completer.popup().sizeHintForColumn(0) + 40)
         self.completer.complete(cr)
 
-    def insert_completion(self, c):
+    # ------------------------------------------------------------------
+    # 2. INSERCIÓN INTELIGENTE (Paréntesis automáticos)
+    # ------------------------------------------------------------------
+    def insert_completion(self, completion):
         tc = self.textCursor()
-        p = self.completer.completionPrefix()
-        tc.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, len(p))
+        prefix_len = len(self.completer.completionPrefix())
+        
+        # Borrar lo que el usuario escribió (incluyendo el símbolo $ o . si lo capturamos)
+        tc.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, prefix_len)
         tc.removeSelectedText()
-        tc.insertText(c)
-        self.setTextCursor(tc)
+        tc.insertText(completion)
+        
+        # Lógica para agregar paréntesis ()
+        # No agregamos paréntesis si es CSS, o si es una variable de PHP ($)
+        should_add_parens = False
+        
+        if self.current_lang == 'python':
+             # En Python, asumimos función si no empieza con mayúscula (clase) 
+             # (Esto se puede mejorar leyendo el tipo desde Jedi)
+             should_add_parens = True 
+             
+        elif self.current_lang in ['php', 'javascript', 'js']:
+            # Si NO empieza con $ (variable) y no es una palabra reservada simple
+            if not completion.startswith('$'):
+                should_add_parens = True
+                
+        # Evitar poner paréntesis en CSS/HTML
+        if self.current_lang in ['css', 'scss', 'html', 'htm']:
+            should_add_parens = False
 
+        if should_add_parens:
+            tc.insertText("()")
+            tc.movePosition(QTextCursor.Left) # Dejar cursor en medio: (|)
+        
+        self.setTextCursor(tc)
+        # ------------------------------------------------------------------
+    # 3. ENTER INTELIGENTE Y MANEJO DE TECLAS
+    # ------------------------------------------------------------------
+    def keyPressEvent(self, e: QKeyEvent):
+        # A. Si el autocompletado está abierto, él manda
+        if self.completer.popup().isVisible():
+            if e.key() in (Qt.Key_Enter, Qt.Key_Return, Qt.Key_Tab, Qt.Key_Escape):
+                e.ignore()
+                return
+
+        # B. Auto-cierre de parejas ((), [], {})
+        if e.text() in self.auto_pairs:
+            cursor = self.textCursor()
+            cursor.insertText(e.text() + self.auto_pairs[e.text()])
+            cursor.movePosition(QTextCursor.Left)
+            self.setTextCursor(cursor)
+            return
+
+        # C. ENTER INTELIGENTE (La lógica que faltaba)
+        if e.key() in (Qt.Key_Return, Qt.Key_Enter):
+            cursor = self.textCursor()
+            pos = cursor.position()
+            doc = self.document()
+            
+            # Verificamos si estamos en medio de llaves o paréntesis: {|} o (|)
+            if pos > 0 and pos < doc.characterCount():
+                char_before = doc.characterAt(pos - 1)
+                char_after = doc.characterAt(pos)
+                
+                # Si estamos rompiendo un bloque: {|}
+                if (char_before == '{' and char_after == '}') or \
+                   (char_before == '(' and char_after == ')') or \
+                   (char_before == '[' and char_after == ']'):
+                    
+                    # 1. Obtener indentación actual
+                    current_line_text = cursor.block().text()
+                    indentation = ""
+                    for char in current_line_text:
+                        if char in [' ', '\t']: indentation += char
+                        else: break
+                    
+                    # 2. Crear la estructura expandida
+                    # \n       -> Nueva línea
+                    # indent   -> Nivel actual
+                    # \t       -> Tab extra (usamos \t o espacios según config, aquí asumo \t por simplicidad visual)
+                    # (cursor)
+                    # \n       -> Otra nueva línea
+                    # indent   -> Nivel original para cerrar la llave
+                    
+                    # Nota: Para ser consistente con self.tab_width, usamos espacios si prefieres
+                    tab_str = " " * self.tab_width # O "\t"
+                    
+                    cursor.insertText("\n" + indentation + tab_str + "\n" + indentation)
+                    cursor.movePosition(QTextCursor.Up)
+                    cursor.movePosition(QTextCursor.EndOfLine)
+                    self.setTextCursor(cursor)
+                    return
+
+        # D. Comportamiento estándar (escribe letras, borra, etc.)
+        super().keyPressEvent(e)
+
+        # E. Trigger de Autocompletado
+        is_ctrl_space = (e.modifiers() & Qt.ControlModifier) and e.key() == Qt.Key_Space
+        
+        if self.current_lang == 'python':
+            if e.text().isalnum() or e.text() == "." or is_ctrl_space:
+                self.timer_jedi.start(150)
+        else:
+            # Ahora incluimos los símbolos especiales en el trigger
+            triggers = ['.', '#', '$', '@', '-', '_']
+            if e.text().isalnum() or e.text() in triggers or is_ctrl_space:
+                self.show_static_suggestions()
+
+    # (Los métodos de line_number_area, update_font y apply_theme se mantienen igual)
+   
     def update_font(self, s, t): 
         f = QFont("Consolas", s)
         self.setFont(f)
