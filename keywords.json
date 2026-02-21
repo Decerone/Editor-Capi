@@ -12,8 +12,8 @@
     "log", "document", "window", "null", "true", "false", "undefined"
   ],
   "html": [
-    "html", "!","DOCTYPE","head", "body", "div", "span", "p", "h1", "h2", "a", "img", "ul",
-    "li", "table", "tr", "td", "form", "input", "button", "script", "style",
+    "html","!","DOCTYPE","head", "body", "div", "span", "p", "h1", "h2", "a", "img", "ul",
+    "li","table", "tr", "td", "form", "input", "button", "script", "style",
     "link", "meta", "title", "header", "footer", "nav", "section", "main",
     "class", "id", "src", "href", "type", "rel", "width", "height","p",
     "br", "hr", "em", "strong", "small", "blockquote", "pre", "code", "figure",

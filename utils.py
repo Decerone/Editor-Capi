@@ -9,82 +9,110 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 # ==========================================
-# DEFINICIÓN DE TEMAS
+# DEFINICIÓN DE TEMAS (EXPANDIDOS)
 # ==========================================
 THEMES = {
     # --- TEMA OSCURO (VS CODE STYLE) ---
     "Dark": {
-        "bg": "#1e1e1e",          # Fondo del Editor
-        "window_bg": "#252526",   # Fondo de la Ventana
-        "fg": "#d4d4d4",          # Texto Principal
-        "select_bg": "#264f78",   # Selección
-        "line_bg": "#2d2d30",     # Línea actual
-        "line_fg": "#858585",     # Números de línea
-        "splitter": "#3e3e42",    # Bordes
+        "bg": "#1e1e1e",
+        "window_bg": "#252526",
+        "fg": "#d4d4d4",
+        "select_bg": "#264f78",
+        "line_bg": "#2d2d30",
+        "line_fg": "#858585",
+        "splitter": "#3e3e42",
         "tags": {
-            "keyword": "#569cd6", # Azul
-            "string": "#ce9178",  # Naranja suave
-            "comment": "#6a9955", # Verde
-            "function": "#dcdcaa",# Amarillo pálido
-            "class": "#4ec9b0",   # Verde agua
-            "number": "#b5cea8"   # Verde claro
+            "keyword": "#569cd6",      # Azul (if, class, function)
+            "string": "#ce9178",       # Naranja suave
+            "comment": "#6a9955",      # Verde
+            "function": "#dcdcaa",     # Amarillo pálido (nombre func)
+            "class": "#4ec9b0",        # Verde agua
+            "number": "#b5cea8",       # Verde claro
+            "builtin": "#4fc1ff",      # Azul cian (echo, print, len)
+            "variable": "#9cdcfe",     # Azul claro ($var)
+            "operator": "#d4d4d4",     # Blanco ( =, +, -> )
+            "tag": "#569cd6",          # Etiquetas HTML (<div, <?php)
+            "attribute": "#9cdcfe",    # Atributos HTML (href, class)
+            "decorator": "#dcdcaa",    # Decoradores Python (@)
+            "constant": "#4fc1ff"      # Constantes
         }
     },
 
     # --- TEMA CLARO (CLEAN STYLE) ---
     "Light": {
-        "bg": "#f4f4f3",          # Fondo del Editor (Blanco puro)
-        "window_bg": "#f5f5f5",   # Fondo de la Ventana/Sidebar (Gris muy claro)
-        "fg": "#333333",          # Texto Principal (Gris oscuro/Negro)
-        "select_bg": "#add6ff",   # Color de selección (Azul suave)
-        "line_bg": "#e1effe",     # Fondo de la línea actual (Azul muy tenue)
-        "line_fg": "#2b91af",     # Números de línea (Azul acero)
-        "splitter": "#e0e0e0",    # Bordes
-        "tags": {                 # Colores de sintaxis (Contrastados para fondo blanco)
-            "keyword": "#0000ff", # Azul
-            "string": "#a31515",  # Rojo oscuro
-            "comment": "#008000", # Verde
-            "function": "#795e26",# Dorado oscuro
-            "class": "#2b91af",   # Cian oscuro
-            "number": "#098658"   # Verde esmeralda
+        "bg": "#f4f4f3",
+        "window_bg": "#f5f5f5",
+        "fg": "#333333",
+        "select_bg": "#add6ff",
+        "line_bg": "#e1effe",
+        "line_fg": "#2b91af",
+        "splitter": "#e0e0e0",
+        "tags": {
+            "keyword": "#0000ff",
+            "string": "#a31515",
+            "comment": "#008000",
+            "function": "#795e26",
+            "class": "#2b91af",
+            "number": "#098658",
+            "builtin": "#001080",
+            "variable": "#001080",
+            "operator": "#333333",
+            "tag": "#800000",
+            "attribute": "#ff0000",
+            "decorator": "#795e26",
+            "constant": "#0070c1"
         }
     },
 
     # --- TEMA MONOKAI (VIBRANT) ---
     "Monokai": {
-        "bg": "#272822",          # Fondo Clásico Monokai
-        "window_bg": "#1e1f1c",   # Un poco más oscuro para la UI
-        "fg": "#f8f8f2",          # Blanco hueso
-        "select_bg": "#49483e",   # Gris selección
-        "line_bg": "#3e3d32",     # Highlight línea
+        "bg": "#272822",
+        "window_bg": "#1e1f1c",
+        "fg": "#f8f8f2",
+        "select_bg": "#49483e",
+        "line_bg": "#3e3d32",
         "line_fg": "#90908a",
         "splitter": "#171814",
         "tags": {
-            "keyword": "#f92672", # Rosa Fuerte
-            "string": "#e6db74",  # Amarillo
-            "comment": "#75715e", # Gris verdoso
-            "function": "#a6e22e",# Verde Neón
-            "class": "#66d9ef",   # Cian
-            "number": "#ae81ff"   # Violeta
+            "keyword": "#f92672",
+            "string": "#e6db74",
+            "comment": "#75715e",
+            "function": "#a6e22e",
+            "class": "#66d9ef",
+            "number": "#ae81ff",
+            "builtin": "#66d9ef",
+            "variable": "#f8f8f2",
+            "operator": "#f92672",
+            "tag": "#f92672",
+            "attribute": "#a6e22e",
+            "decorator": "#a6e22e",
+            "constant": "#ae81ff"
         }
     },
 
     # --- TEMA DRACULA (PASTEL DARK) ---
     "Dracula": {
-        "bg": "#282a36",          # Fondo Dracula
-        "window_bg": "#21222c",   # Fondo UI
-        "fg": "#f8f8f2",          # Texto
-        "select_bg": "#44475a",   # Selección púrpura grisáceo
-        "line_bg": "#44475a",     # Línea actual
-        "line_fg": "#6272a4",     # Comentarios/Num línea
+        "bg": "#282a36",
+        "window_bg": "#21222c",
+        "fg": "#f8f8f2",
+        "select_bg": "#44475a",
+        "line_bg": "#44475a",
+        "line_fg": "#6272a4",
         "splitter": "#191a21",
         "tags": {
-            "keyword": "#ff79c6", # Rosa Pastel
-            "string": "#f1fa8c",  # Amarillo Pastel
-            "comment": "#6272a4", # Azul Grisáceo
-            "function": "#50fa7b",# Verde Pastel
-            "class": "#8be9fd",   # Cian Pastel
-            "number": "#bd93f9"   # Púrpura Pastel
+            "keyword": "#ff79c6",
+            "string": "#f1fa8c",
+            "comment": "#6272a4",
+            "function": "#50fa7b",
+            "class": "#8be9fd",
+            "number": "#bd93f9",
+            "builtin": "#8be9fd",
+            "variable": "#f8f8f2",
+            "operator": "#ff79c6",
+            "tag": "#ff79c6",
+            "attribute": "#50fa7b",
+            "decorator": "#50fa7b",
+            "constant": "#bd93f9"
         }
     }
 }

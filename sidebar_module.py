@@ -3,9 +3,10 @@ import shutil
 from PySide6.QtCore import Qt, QDir
 from PySide6.QtWidgets import (QFileSystemModel, QTreeView, QMenu, QInputDialog, 
                                QMessageBox, QWidget, QVBoxLayout, QPushButton, QSizePolicy)
+from PySide6.QtGui import QFont
 
 # =========================================================================
-#  1. MODELO DE DATOS
+#  1. MODELO DE DATOS 2.0
 # =========================================================================
 class EmojiFileSystemModel(QFileSystemModel):
     def __init__(self):
@@ -91,7 +92,7 @@ class FileSidebar(QTreeView):
             except Exception as e: QMessageBox.critical(self, "Error", str(e))
 
 # =========================================================================
-#  3. WRAPPER (FIX: SPACER DINÁMICO)
+#  3. WRAPPER (CORREGIDO: TEXTO CENTRADO EN EL BOTÓN)
 # =========================================================================
 class ProjectSidebarWrapper(QWidget):
     def __init__(self, parent=None):
@@ -100,40 +101,59 @@ class ProjectSidebarWrapper(QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
         
-        # 1. BOTÓN TOGGLE
+        # [CORREGIDO] Botón con mejoras visuales y texto alineado
         self.toggle_btn = QPushButton("▼ Proyecto")
         self.toggle_btn.setObjectName("btn_project")
         self.toggle_btn.setCursor(Qt.PointingHandCursor)
         self.toggle_btn.setToolTip("Ocultar/Mostrar archivos")
+        
+        self.toggle_btn.setMinimumHeight(35)
+        font = QFont()
+        font.setBold(True)
+        self.toggle_btn.setFont(font)
+        
+        # Estilo base (se sobrescribirá en update_theme, pero dejamos uno por defecto)
+        self.toggle_btn.setStyleSheet("""
+            QPushButton#btn_project {
+                text-align: left;
+                padding-left: 8px;
+                padding-right: 8px;
+                border: none;
+                background-color: #2d2d2d;
+                color: white;
+                font-weight: bold;
+            }
+            QPushButton#btn_project:hover {
+                background-color: #3d3d3d;
+            }
+            QPushButton#btn_project:pressed {
+                background-color: #1d1d1d;
+            }
+        """)
+        
         self.toggle_btn.clicked.connect(self.toggle_view)
         
-        # 2. ÁRBOL DE ARCHIVOS
         self.tree_view = FileSidebar()
         
-        # 3. SPACER DINÁMICO (Widget invisible que empuja)
         self.spacer = QWidget()
         self.spacer.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)
-        self.spacer.hide() # Empieza oculto porque el árbol empieza visible
+        self.spacer.hide()
         
-        # AGREGAR AL LAYOUT
         self.layout.addWidget(self.toggle_btn)
         self.layout.addWidget(self.tree_view)
-        self.layout.addWidget(self.spacer) # Al final
+        self.layout.addWidget(self.spacer)
         
         self.root_path = ""
         self.f_model = None
 
     def toggle_view(self):
-        """Intercambia visibilidad entre el Árbol y el Spacer"""
         if self.tree_view.isVisible():
-            # COLAPSAR
             self.tree_view.hide()
-            self.spacer.show() # El spacer aparece y empuja el botón arriba
+            self.spacer.show()
             self.toggle_btn.setText(f"▶ {os.path.basename(self.root_path)}")
         else:
-            # EXPANDIR
-            self.spacer.hide() # El spacer desaparece por completo (0px)
-            self.tree_view.show() # El árbol toma todo el espacio
+            self.spacer.hide()
+            self.tree_view.show()
             self.toggle_btn.setText(f"▼ {os.path.basename(self.root_path)}")
 
     def set_project_path(self, path):
@@ -149,7 +169,6 @@ class ProjectSidebarWrapper(QWidget):
         
         self.f_model.directoryLoaded.connect(lambda p: self.on_directory_loaded(p))
         
-        # Estado inicial: Expandido
         self.spacer.hide()
         self.tree_view.show()
         self.toggle_btn.setText(f"▼ {os.path.basename(self.root_path)}")
@@ -159,5 +178,25 @@ class ProjectSidebarWrapper(QWidget):
             idx = self.f_model.index(self.root_path)
             if idx.isValid(): self.tree_view.setRootIndex(idx)
 
+    # [CORREGIDO] update_theme ahora también actualiza el botón
     def update_theme(self, c):
         self.tree_view.update_theme(c)
+        self.toggle_btn.setStyleSheet(f"""
+            QPushButton#btn_project {{
+                text-align: left;
+                padding-left: 8px;
+                padding-right: 8px;
+                border: none;
+                background-color: {c['bg']};
+                color: {c['fg']};
+                font-weight: bold;
+                border-bottom: 1px solid {c['splitter']};
+            }}
+            QPushButton#btn_project:hover {{
+                background-color: {c['line_bg']};
+            }}
+            QPushButton#btn_project:pressed {{
+                background-color: {c['select_bg']};
+                color: {c.get('select_fg', 'white')};
+            }}
+        """)
