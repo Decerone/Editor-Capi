@@ -41,7 +41,7 @@ THEMES = {
     # --- TEMA CLARO (CLEAN STYLE) ---
     "Light": {
         "bg": "#f4f4f3",
-        "window_bg": "#f5f5f5",
+        "window_bg": "#e9e9e9",
         "fg": "#333333",
         "select_bg": "#add6ff",
         "line_bg": "#e1effe",

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # ==============================================================================
-#  CAPI EDITOR PRO - VERSIÓN FINAL (CORREGIDA 2.0)
+#  CAPI EDITOR PRO - VERSIÓN FINAL (CORREGIDA 2.0 + CONFIG DINÁMICO)
 # ==============================================================================
 
 import sys
@@ -68,10 +68,9 @@ except Exception as e:
 
 
 # ==============================================================================
-#  CLASES DE UTILIDAD (CORREGIDAS)
+#  CLASES DE UTILIDAD
 # ==============================================================================
 
-# [CORREGIDO] ShortcutsDialog con mejor estilo y tabla funcional
 class ShortcutsDialog(QDialog):
     def __init__(self, colors, parent=None):
         super().__init__(parent)
@@ -129,51 +128,78 @@ class ShortcutsDialog(QDialog):
         btn_close.clicked.connect(self.accept)
         layout.addWidget(btn_close, alignment=Qt.AlignRight)
 
+#==============================================================================
+# [MODIFICADO] AboutDialog: Ahora lee dinámicamente de config.json
+#==============================================================================
 
-# [CORREGIDO] AboutDialog con icono y mejor presentación
 class AboutDialog(QDialog):
-    def __init__(self, config, colors, icon_path, parent=None):
+    def __init__(self, config, colors, fallback_icon_path, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Acerca de Capi Editor")
+        import os # Aseguramos tener os disponible para construir la ruta
+        
+        # 1. Extraer datos de config (con valores por defecto por seguridad)
+        about_data = config.get('about', {})
+        app_settings = config.get('app_settings', {}) # Extraemos también la config de la app
+        
+        app_name = about_data.get('app_name', 'Capi Editor Pro')
+        app_version = about_data.get('version', 'Versión 2.0')
+        app_desc = about_data.get('app_desc', 'Un editor de código moderno y ligero')
+        app_author = about_data.get('app_author', 'Capi Dev')
+        app_year = about_data.get('app_year', '2026')
+
+        # 2. INTENTAR CARGAR EL ÍCONO DESDE EL JSON
+        json_icon_name = app_settings.get("icon_path", "")
+        if json_icon_name:
+            # Si el JSON tiene un ícono, construimos la ruta absoluta hacia él
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            final_icon_path = os.path.join(base_dir, json_icon_name)
+        else:
+            # Si el JSON no tiene la clave, usamos el que pasaron por defecto
+            final_icon_path = fallback_icon_path
+
+        self.setWindowTitle(f"Acerca de {app_name}")
         self.setFixedSize(350, 280)
-        self.setWindowIcon(QIcon(icon_path))  # Icono de la ventana
+        
+        # 3. Aplicar el ícono dinámico a la ventana
+        self.setWindowIcon(QIcon(final_icon_path))
         
         self.setStyleSheet(f"""
             QDialog {{
-                background-color: {colors['window_bg']};
-                color: {colors['fg']};
+                background-color: {colors.get('window_bg', '#252526')};
+                color: {colors.get('fg', '#d4d4d4')};
             }}
             QLabel {{
-                color: {colors['fg']};
+                color: {colors.get('fg', '#d4d4d4')};
             }}
             QPushButton {{
-                background-color: {colors['bg']};
-                color: {colors['fg']};
-                border: 1px solid {colors['splitter']};
+                background-color: {colors.get('bg', '#1e1e1e')};
+                color: {colors.get('fg', '#d4d4d4')};
+                border: 1px solid {colors.get('splitter', '#3e3e42')};
                 padding: 5px 15px;
                 min-width: 80px;
             }}
             QPushButton:hover {{
-                background-color: {colors['line_bg']};
+                background-color: {colors.get('line_bg', '#2d2d30')};
             }}
         """)
         
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
         
-        # Icono grande
+        # 4. Aplicar el ícono dinámico al logo central
         icon_label = QLabel()
-        pixmap = QPixmap(icon_path)
+        pixmap = QPixmap(final_icon_path)
         if not pixmap.isNull():
             icon_label.setPixmap(pixmap.scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         else:
+            # Fallback a emoji si la imagen no se encuentra físicamente
             icon_label.setText("📝")
             icon_label.setStyleSheet("font-size: 48px;")
         icon_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(icon_label)
         
-        # Título
-        title = QLabel("Capi Editor Pro")
+        # Título Dinámico
+        title = QLabel(app_name)
         title_font = QFont()
         title_font.setPointSize(16)
         title_font.setBold(True)
@@ -181,25 +207,27 @@ class AboutDialog(QDialog):
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
         
-        # Versión
-        version = QLabel("Versión 2.0")
+        # Versión Dinámica
+        version = QLabel(app_version)
         version.setAlignment(Qt.AlignCenter)
         layout.addWidget(version)
         
-        # Descripción
-        desc = QLabel("Un editor de código moderno y ligero\nDesarrollado con Python y PySide6")
+        # Descripción Dinámica
+        desc = QLabel(app_desc)
         desc.setAlignment(Qt.AlignCenter)
         desc.setWordWrap(True)
         layout.addWidget(desc)
         
-        # Derechos
-        rights = QLabel("© 2025 Capi Dev")
+        # Derechos Dinámicos
+        rights = QLabel(f"© {app_year} {app_author}")
         rights.setAlignment(Qt.AlignCenter)
         layout.addWidget(rights)
         
         btn_close = QPushButton("Cerrar")
         btn_close.clicked.connect(self.accept)
         layout.addWidget(btn_close, alignment=Qt.AlignCenter)
+
+#==============================================================================
 
 
 class LineNumberArea(QWidget):
@@ -209,7 +237,7 @@ class LineNumberArea(QWidget):
 
 
 # ==============================================================================
-#  CLASE: HIGHLIGHTER (sin cambios)
+#  CLASE: HIGHLIGHTER
 # ==============================================================================
 
 class PySideHighlighter(QSyntaxHighlighter):
@@ -272,7 +300,7 @@ class PySideHighlighter(QSyntaxHighlighter):
 
 
 # ==============================================================================
-#  CLASE: JEDI WORKER (sin cambios)
+#  CLASE: JEDI WORKER
 # ==============================================================================
 
 class JediWorker(QThread):
@@ -290,7 +318,7 @@ class JediWorker(QThread):
 
 
 # ==============================================================================
-#  CLASE PRINCIPAL: CODE EDITOR (con correcciones previas de autocompletado)
+#  CLASE PRINCIPAL: CODE EDITOR
 # ==============================================================================
 
 class CodeEditor(QPlainTextEdit): 
@@ -345,7 +373,6 @@ class CodeEditor(QPlainTextEdit):
             else:
                 self.base_keywords = KEYWORDS_DB.get(self.current_lang, [])
 
-    # [CORREGIDO] eventFilter mejorado
     def eventFilter(self, obj, event):
         if event.type() == QEvent.KeyPress and self.completer.popup().isVisible():
             key = event.key()
@@ -385,7 +412,6 @@ class CodeEditor(QPlainTextEdit):
 
         return super().eventFilter(obj, event)
 
-    # [CORREGIDO] insert_completion con scanner manual mejorado
     def insert_completion(self, completion):
         if not completion:
             return
@@ -415,7 +441,6 @@ class CodeEditor(QPlainTextEdit):
             return list(set(raw_words))
         except: return []
 
-    # [CORREGIDO] show_static_suggestions con filtro mejorado
     def show_static_suggestions(self):
         tc = self.textCursor()
         line_text = tc.block().text()
@@ -570,7 +595,7 @@ class CodeEditor(QPlainTextEdit):
 
 
 # ==============================================================================
-#  CLASE: EDITOR TAB (sin cambios)
+#  CLASE: EDITOR TAB
 # ==============================================================================
 
 class EditorTab(QWidget):
@@ -589,13 +614,20 @@ class EditorTab(QWidget):
 
 
 # ==============================================================================
-#  CLASE PRINCIPAL: CAPI EDITOR (con métodos de diálogo y apply_theme corregidos)
+#  CLASE PRINCIPAL: CAPI EDITOR
 # ==============================================================================
 
 class CapiEditor(QMainWindow):
     def __init__(self):
         super().__init__()
+        # [MODIFICADO] 1. Cargar config primero
         self.load_config()
+        
+        # [MODIFICADO] 2. Extraer el nombre de la app dinámicamente
+        app_settings = self.config.get("app_settings", {})
+        self.app_name = app_settings.get("app_name", "Capi Editor Pro")
+        self.app_version = app_settings.get("app_version", "")
+        
         self.current_theme = "Dark"
         self.font_size = 12
         self.tab_width = 4
@@ -605,7 +637,8 @@ class CapiEditor(QMainWindow):
         
         self.all_themes = list(THEMES.keys())
         
-        self.setWindowTitle("Capi Editor Pro")
+        # [MODIFICADO] 3. Aplicar título dinámico
+        self.setWindowTitle(f"{self.app_name} {self.app_version}".strip())
         self.resize(1200, 800)
         main = QSplitter(Qt.Horizontal)
         self.setCentralWidget(main)
@@ -645,11 +678,15 @@ class CapiEditor(QMainWindow):
         self.as_timer.timeout.connect(self.auto_save)
         self.as_timer.start(5000)
 
+    # [MODIFICADO] load_config con mejor manejo de errores
     def load_config(self):
         try:
-            with open(get_app_path("config.json"), 'r', encoding='utf-8') as f: 
+            config_path = get_app_path("config.json")
+            with open(config_path, 'r', encoding='utf-8') as f: 
                 self.config = json.load(f)
-        except: self.config = {}
+        except Exception as e: 
+            print(f"⚠️ No se pudo cargar config.json: {e}")
+            self.config = {}
 
     def load_session(self):
         try:
@@ -673,10 +710,13 @@ class CapiEditor(QMainWindow):
     def select_folder(self):
         p = QFileDialog.getExistingDirectory(self, "Abrir Proyecto")
         if p: self.init_sidebar_for_path(p); self.save_session()
+        
+    # [MODIFICADO] init_sidebar_for_path usa el app_name dinámico
     def init_sidebar_for_path(self, path):
         self.root_dir = os.path.abspath(path)
         self.sidebar_widget.set_project_path(self.root_dir)
-        self.setWindowTitle(f"Capi Editor - {os.path.basename(self.root_dir)}")
+        self.setWindowTitle(f"{self.app_name} {self.app_version} - {os.path.basename(self.root_dir)}")
+        
     def on_file_click(self, i): 
         p = self.sidebar_widget.tree_view.model().filePath(i)
         if os.path.isfile(p): self.open_file(p)
@@ -710,10 +750,13 @@ class CapiEditor(QMainWindow):
     def setup_status_bar(self):
         self.status_bar = self.statusBar(); self.lbl_lang = QLabel("Texto"); self.lbl_cursor = QLabel("Ln 1, Col 1")
         self.status_bar.addPermanentWidget(self.lbl_lang); self.status_bar.addPermanentWidget(self.lbl_cursor)
+    
+    # Este método ya leía dinámicamente de config, lo dejamos igual
     def show_welcome_tab(self):
         ws = self.config.get('welcome_screen', {})
         t = self.add_tab(None, f"{ws.get('welcome_title', 'Bienvenido')}\n\n" + "\n".join(ws.get('features_list', [])))
         t.is_welcome = True; t.editor.setReadOnly(True); t.saved = True; self.tabs.setTabText(self.tabs.indexOf(t), "Inicio")
+    
     def auto_save(self): 
         for i in range(self.tabs.count()):
             t = self.tabs.widget(i)
@@ -738,12 +781,10 @@ class CapiEditor(QMainWindow):
             try: from pygments.lexers import get_lexer_for_filename; t.editor.set_code_language(get_lexer_for_filename(p).aliases[0])
             except: pass
 
-    # [CORREGIDO] show_shortcuts_dialog usando la nueva clase
     def show_shortcuts_dialog(self):
         dlg = ShortcutsDialog(THEMES.get(self.current_theme, {}), self)
         dlg.exec()
 
-    # [CORREGIDO] show_about pasando icon_path
     def show_about(self):
         dlg = AboutDialog(self.config, THEMES.get(self.current_theme, {}), icon_path, self)
         dlg.exec()
@@ -769,7 +810,6 @@ class CapiEditor(QMainWindow):
         self.minimap_enabled = not self.minimap_enabled
         for i in range(self.tabs.count()): self.tabs.widget(i).minimap.setVisible(self.minimap_enabled)
 
-    # [CORREGIDO] apply_theme con estilos extendidos y aplicación global
     def apply_theme(self, n):
         self.current_theme = n
         c = THEMES.get(n, THEMES['Dark'])
@@ -885,8 +925,21 @@ class CapiEditor(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon(icon_path))
-    app.setDesktopFileName("capi_editor") 
+    
+    # [NUEVO] Establecer el nombre interno de la aplicación
+    app.setApplicationName("CapiEditor")
+    
+    # [CORREGIDO] Vincular EXACTAMENTE con el nombre de tu archivo .desktop
+    app.setDesktopFileName("capi-editor.desktop") 
+    
+    # Intento de cargar config inicial para icono de la app a nivel OS
+    try:
+        with open(get_app_path("config.json"), 'r', encoding='utf-8') as f:
+            cfg = json.load(f)
+            app.setWindowIcon(QIcon(get_app_path(cfg.get("app_settings", {}).get("icon_path", "capieditor.png"))))
+    except:
+        app.setWindowIcon(QIcon(icon_path))
+        
     window = CapiEditor()
     window.show()
     sys.exit(app.exec())

@@ -97,7 +97,7 @@ class GlobalSearchDialog(QDialog):
             self.results_list.addItem("No hay resultados.")
 
     def open_file(self, item):
-        path, line = item.setData(Qt.UserRole)
+        path, line = item.data(Qt.UserRole)
         self.parent().open_file(path)
         # Aquí podrías añadir lógica para ir a la línea específica
         self.accept()
