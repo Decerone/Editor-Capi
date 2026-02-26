@@ -1,0 +1,42 @@
+name: Compilar Editor Capi
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Descargar código
+      uses: actions/checkout@v4
+
+    - name: Instalar Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10' 
+
+    - name: Instalar Dependencias
+      run: |
+        pip install --upgrade pip
+        pip install pyinstaller
+        if (Test-Path requirements.txt) { pip install -r requirements.txt }
+
+    - name: Crear Aplicación (Modo Carpeta)
+      # --onedir: Crea una carpeta en lugar de un solo archivo
+      # --icon: Le pone tu logo al .exe
+      # --name: Nombre de la carpeta final y del .exe
+      # --noconsole: Quita la pantalla negra de fondo (igual que windowed)
+      run: pyinstaller --onedir --noconsole --icon=icono.ico --name=CapiEditor editor_app.py
+
+    # Paso extra: Copiar el icono dentro de la carpeta (opcional, pero se ve bien)
+    - name: Copiar recursos extra
+      run: |
+        copy icono.ico dist/CapiEditor/
+
+    - name: Subir el resultado
+      uses: actions/upload-artifact@v4
+      with:
+        name: CapiEditor-Portable
+        path: dist/CapiEditor  # Ahora subimos la carpeta entera
