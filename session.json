@@ -1,8 +1,6 @@
 {
   "root": "/home/decerone/Escritorio/Editor_Capi",
-  "theme": "Dark",
-  "open_files": [
-    "/home/decerone/Escritorio/Editor_Capi/utils.py"
-  ],
-  "current_tab": 0
+  "theme": "Monokai",
+  "open_files": [],
+  "current_tab": -1
 }

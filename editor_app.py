@@ -2,24 +2,24 @@
 # -*- coding: utf-8 -*-
 
 # ==============================================================================
-#  CAPI EDITOR PRO - VERSIÓN FINAL (CORREGIDA 2.0 + CONFIG DINÁMICO)
+#  CAPI EDITOR PRO - VERSIÓN FINAL (CORREGIDA Y COMPLETA)
 # ==============================================================================
 
 import sys
 import os
 import json
 import re
-import traceback 
+import traceback
 
 from PySide6.QtCore import (Qt, QTimer, QSize, QRect, QThread, Signal, QEvent)
 from PySide6.QtGui import (QColor, QTextCharFormat, QFont, QFontMetricsF,
-                           QSyntaxHighlighter, QTextCursor, QPainter, QKeyEvent, 
-                           QIcon, QPixmap, QTextFormat) 
+                           QSyntaxHighlighter, QTextCursor, QPainter, QKeyEvent,
+                           QIcon, QPixmap, QTextFormat)
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                               QPlainTextEdit, QSplitter, QFileDialog, QMessageBox, 
-                               QTabWidget, QMenu, QInputDialog, QLabel, QDialog, 
+                               QPlainTextEdit, QSplitter, QFileDialog, QMessageBox,
+                               QTabWidget, QMenu, QInputDialog, QLabel, QDialog,
                                QTableWidget, QTableWidgetItem, QHeaderView, QPushButton,
-                               QTextEdit, QCompleter) 
+                               QTextEdit, QCompleter)
 
 # --- IMPORTACIONES EXTERNAS ---
 try:
@@ -37,8 +37,7 @@ basedir = os.path.dirname(os.path.abspath(__file__))
 icon_path = os.path.join(basedir, "icon.png")
 
 def get_app_path(filename):
-    base_path = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(base_path, filename)
+    return os.path.join(basedir, filename)
 
 # Cargar Keywords
 KEYWORDS_DB = {}
@@ -104,65 +103,52 @@ class ShortcutsDialog(QDialog):
                 background-color: {colors['line_bg']};
             }}
         """)
-        
+
         layout = QVBoxLayout(self)
-        
+
         self.table = QTableWidget(0, 2)
         self.table.setHorizontalHeaderLabels(["Acción", "Atajo"])
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.table.setAlternatingRowColors(True)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        
-        from shortcuts import SHORTCUTS_DATA
+
         for category, items in SHORTCUTS_DATA.items():
             for action, key in items:
                 row = self.table.rowCount()
                 self.table.insertRow(row)
                 self.table.setItem(row, 0, QTableWidgetItem(action))
                 self.table.setItem(row, 1, QTableWidgetItem(key))
-        
+
         layout.addWidget(self.table)
-        
+
         btn_close = QPushButton("Cerrar")
         btn_close.clicked.connect(self.accept)
         layout.addWidget(btn_close, alignment=Qt.AlignRight)
 
-#==============================================================================
-# [MODIFICADO] AboutDialog: Ahora lee dinámicamente de config.json
-#==============================================================================
 
 class AboutDialog(QDialog):
     def __init__(self, config, colors, fallback_icon_path, parent=None):
         super().__init__(parent)
-        import os # Aseguramos tener os disponible para construir la ruta
-        
-        # 1. Extraer datos de config (con valores por defecto por seguridad)
         about_data = config.get('about', {})
-        app_settings = config.get('app_settings', {}) # Extraemos también la config de la app
-        
+        app_settings = config.get('app_settings', {})
+
         app_name = about_data.get('app_name', 'Capi Editor Pro')
         app_version = about_data.get('version', 'Versión 2.0')
         app_desc = about_data.get('app_desc', 'Un editor de código moderno y ligero')
         app_author = about_data.get('app_author', 'Capi Dev')
         app_year = about_data.get('app_year', '2026')
 
-        # 2. INTENTAR CARGAR EL ÍCONO DESDE EL JSON
         json_icon_name = app_settings.get("icon_path", "")
         if json_icon_name:
-            # Si el JSON tiene un ícono, construimos la ruta absoluta hacia él
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            final_icon_path = os.path.join(base_dir, json_icon_name)
+            final_icon_path = os.path.join(basedir, json_icon_name)
         else:
-            # Si el JSON no tiene la clave, usamos el que pasaron por defecto
             final_icon_path = fallback_icon_path
 
         self.setWindowTitle(f"Acerca de {app_name}")
         self.setFixedSize(350, 280)
-        
-        # 3. Aplicar el ícono dinámico a la ventana
         self.setWindowIcon(QIcon(final_icon_path))
-        
+
         self.setStyleSheet(f"""
             QDialog {{
                 background-color: {colors.get('window_bg', '#252526')};
@@ -182,23 +168,20 @@ class AboutDialog(QDialog):
                 background-color: {colors.get('line_bg', '#2d2d30')};
             }}
         """)
-        
+
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
-        
-        # 4. Aplicar el ícono dinámico al logo central
+
         icon_label = QLabel()
         pixmap = QPixmap(final_icon_path)
         if not pixmap.isNull():
             icon_label.setPixmap(pixmap.scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         else:
-            # Fallback a emoji si la imagen no se encuentra físicamente
             icon_label.setText("📝")
             icon_label.setStyleSheet("font-size: 48px;")
         icon_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(icon_label)
-        
-        # Título Dinámico
+
         title = QLabel(app_name)
         title_font = QFont()
         title_font.setPointSize(16)
@@ -206,34 +189,35 @@ class AboutDialog(QDialog):
         title.setFont(title_font)
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
-        
-        # Versión Dinámica
+
         version = QLabel(app_version)
         version.setAlignment(Qt.AlignCenter)
         layout.addWidget(version)
-        
-        # Descripción Dinámica
+
         desc = QLabel(app_desc)
         desc.setAlignment(Qt.AlignCenter)
         desc.setWordWrap(True)
         layout.addWidget(desc)
-        
-        # Derechos Dinámicos
+
         rights = QLabel(f"© {app_year} {app_author}")
         rights.setAlignment(Qt.AlignCenter)
         layout.addWidget(rights)
-        
+
         btn_close = QPushButton("Cerrar")
         btn_close.clicked.connect(self.accept)
         layout.addWidget(btn_close, alignment=Qt.AlignCenter)
 
-#==============================================================================
-
 
 class LineNumberArea(QWidget):
-    def __init__(self, editor): super().__init__(editor); self.editor = editor
-    def sizeHint(self): return QSize(self.editor.line_number_area_width(), 0)
-    def paintEvent(self, event): self.editor.lineNumberAreaPaintEvent(event)
+    def __init__(self, editor):
+        super().__init__(editor)
+        self.editor = editor
+
+    def sizeHint(self):
+        return QSize(self.editor.line_number_area_width(), 0)
+
+    def paintEvent(self, event):
+        self.editor.lineNumberAreaPaintEvent(event)
 
 
 # ==============================================================================
@@ -254,8 +238,10 @@ class PySideHighlighter(QSyntaxHighlighter):
         for tag, hex_color in theme_tags.items():
             fmt = QTextCharFormat()
             fmt.setForeground(QColor(hex_color))
-            if tag in ['keyword', 'class']: fmt.setFontWeight(QFont.Bold)
-            if tag == 'comment': fmt.setFontItalic(True)
+            if tag in ['keyword', 'class']:
+                fmt.setFontWeight(QFont.Bold)
+            if tag == 'comment':
+                fmt.setFontItalic(True)
             self.formats[tag] = fmt
 
     def set_language(self, l):
@@ -268,14 +254,16 @@ class PySideHighlighter(QSyntaxHighlighter):
         self.rehighlight()
 
     def highlightBlock(self, text):
-        if not text: return
+        if not text:
+            return
         try:
             from pygments.lexers import get_lexer_by_name
             if self.language in ['php', 'html', 'htm', 'blade']:
                 lexer = get_lexer_by_name("php", startinline=True)
             else:
                 lexer = get_lexer_by_name(self.language)
-        except: return
+        except:
+            return
 
         for index, token_type, value in lexer.get_tokens_unprocessed(text):
             length = len(value)
@@ -284,18 +272,30 @@ class PySideHighlighter(QSyntaxHighlighter):
                 self.setFormat(index, length, self.formats[tag])
 
     def _get_tag_for_token(self, token_type):
-        if token_type in Token.Keyword: return "keyword"
-        if token_type in Token.Name.Tag: return "tag"
-        if token_type in Token.Name.Attribute: return "attribute"
-        if token_type in Token.Literal.String: return "string"
-        if token_type in Token.Name.Builtin: return "builtin"
-        if token_type in Token.Name.Variable: return "variable"
-        if token_type in Token.Comment: return "comment"
-        if token_type in Token.Operator: return "operator"
-        if token_type in Token.Literal.Number: return "number"
-        if token_type in Token.Name.Function: return "function"
-        if token_type in Token.Name.Class: return "class"
-        if token_type in Token.Name: return "attribute" 
+        if token_type in Token.Keyword:
+            return "keyword"
+        if token_type in Token.Name.Tag:
+            return "tag"
+        if token_type in Token.Name.Attribute:
+            return "attribute"
+        if token_type in Token.Literal.String:
+            return "string"
+        if token_type in Token.Name.Builtin:
+            return "builtin"
+        if token_type in Token.Name.Variable:
+            return "variable"
+        if token_type in Token.Comment:
+            return "comment"
+        if token_type in Token.Operator:
+            return "operator"
+        if token_type in Token.Literal.Number:
+            return "number"
+        if token_type in Token.Name.Function:
+            return "function"
+        if token_type in Token.Name.Class:
+            return "class"
+        if token_type in Token.Name:
+            return "attribute"
         return None
 
 
@@ -305,42 +305,47 @@ class PySideHighlighter(QSyntaxHighlighter):
 
 class JediWorker(QThread):
     finished = Signal(list)
+
     def __init__(self, code, line, col, path):
         super().__init__()
-        self.code, self.line, self.col, self.path = code, line, col, path
+        self.code = code
+        self.line = line
+        self.col = col
+        self.path = path
+
     def run(self):
         try:
             script = jedi.Script(code=self.code, path=self.path)
             completions = script.complete(self.line, self.col)
             results = [{'name': c.name, 'type': c.type} for c in completions]
             self.finished.emit(results)
-        except: self.finished.emit([])
+        except:
+            self.finished.emit([])
 
 
 # ==============================================================================
-#  CLASE PRINCIPAL: CODE EDITOR (con números de línea dinámicos)
+#  CLASE PRINCIPAL: CODE EDITOR
 # ==============================================================================
 
-class CodeEditor(QPlainTextEdit): 
+class CodeEditor(QPlainTextEdit):
     def __init__(self, parent, theme, size, tabs):
         super().__init__(parent)
         self.theme_name = theme
         self.line_number_area = LineNumberArea(self)
         self.highlighter = PySideHighlighter(self.document(), "text", theme)
-        
-        self.completer = AutoCompleter(self) 
+
+        self.completer = AutoCompleter(self)
         self.completer.setWidget(self)
         self.completer.setCompletionMode(QCompleter.PopupCompletion)
-        
-        self.completer.activated.connect(self.insert_completion) 
+        self.completer.activated.connect(self.insert_completion)
         self.installEventFilter(self)
-        
+
         self.tab_width = tabs
         self.file_path = None
         self.current_lang = "text"
-        self.base_keywords = [] 
-        
-        self.worker = None 
+        self.base_keywords = []
+
+        self.worker = None
         self.timer_jedi = QTimer()
         self.timer_jedi.setSingleShot(True)
         self.timer_jedi.timeout.connect(self.run_jedi_analysis)
@@ -354,16 +359,22 @@ class CodeEditor(QPlainTextEdit):
         self.apply_theme(theme)
 
     def set_code_language(self, lang_alias):
-        if lang_alias in ['js', 'javascript']: lang = 'javascript'
-        elif lang_alias in ['py', 'python']: lang = 'python'
-        elif lang_alias in ['html', 'htm']: lang = 'html'
-        elif lang_alias in ['php']: lang = 'php'
-        elif lang_alias in ['css']: lang = 'css'
-        else: lang = 'text'
+        if lang_alias in ['js', 'javascript']:
+            lang = 'javascript'
+        elif lang_alias in ['py', 'python']:
+            lang = 'python'
+        elif lang_alias in ['html', 'htm']:
+            lang = 'html'
+        elif lang_alias in ['php']:
+            lang = 'php'
+        elif lang_alias in ['css']:
+            lang = 'css'
+        else:
+            lang = 'text'
 
         self.current_lang = lang
         self.highlighter.set_language(self.current_lang)
-        
+
         self.base_keywords = []
         if self.current_lang != 'python':
             if self.current_lang == 'php':
@@ -376,7 +387,6 @@ class CodeEditor(QPlainTextEdit):
     def eventFilter(self, obj, event):
         if event.type() == QEvent.KeyPress and self.completer.popup().isVisible():
             key = event.key()
-            
             if key == Qt.Key_Tab:
                 popup = self.completer.popup()
                 current_index = popup.currentIndex()
@@ -390,7 +400,6 @@ class CodeEditor(QPlainTextEdit):
                         return True
                 popup.hide()
                 return False
-            
             elif key in (Qt.Key_Return, Qt.Key_Enter):
                 popup = self.completer.popup()
                 current_index = popup.currentIndex()
@@ -402,25 +411,21 @@ class CodeEditor(QPlainTextEdit):
                         return True
                 popup.hide()
                 return False
-            
             elif key == Qt.Key_Escape:
                 self.completer.popup().hide()
                 return True
-
             elif key in (Qt.Key_Up, Qt.Key_Down, Qt.Key_PageUp, Qt.Key_PageDown):
-                return False 
-
+                return False
         return super().eventFilter(obj, event)
 
     def insert_completion(self, completion):
         if not completion:
             return
-        
         tc = self.textCursor()
         doc = self.document()
         pos = tc.position()
         text = doc.toPlainText()
-        
+
         start_pos = pos
         while start_pos > 0:
             char = text[start_pos - 1]
@@ -428,7 +433,7 @@ class CodeEditor(QPlainTextEdit):
                 start_pos -= 1
             else:
                 break
-        
+
         tc.setPosition(start_pos)
         tc.setPosition(pos, QTextCursor.KeepAnchor)
         tc.insertText(completion)
@@ -439,17 +444,18 @@ class CodeEditor(QPlainTextEdit):
         try:
             raw_words = re.findall(r'\b[a-zA-Z_]\w{2,}\b', text)
             return list(set(raw_words))
-        except: return []
+        except:
+            return []
 
     def show_static_suggestions(self):
         tc = self.textCursor()
         line_text = tc.block().text()
         pos_in_block = tc.positionInBlock()
         text_before = line_text[:pos_in_block]
-        
+
         match = re.search(r'([a-zA-Z0-9_]+)$', text_before)
         prefix = match.group(1) if match else ""
-        
+
         if len(prefix) < 2:
             self.completer.popup().hide()
             return
@@ -458,7 +464,7 @@ class CodeEditor(QPlainTextEdit):
         combined = list(set(self.base_keywords + dynamic))
         filtered = [w for w in combined if w.lower().startswith(prefix.lower())]
         filtered.sort(key=lambda x: (x.lower() != prefix.lower(), x.lower()))
-        
+
         if not filtered:
             self.completer.popup().hide()
             return
@@ -493,10 +499,10 @@ class CodeEditor(QPlainTextEdit):
                     return
 
         super().keyPressEvent(e)
-        
+
         is_ctrl_space = (e.modifiers() & Qt.ControlModifier) and e.key() == Qt.Key_Space
         triggers = ['.', '#', '$', '@', '-', '_', '<', '/']
-        
+
         if self.current_lang == 'python':
             if e.text().isalnum() or e.text() == "." or is_ctrl_space:
                 self.timer_jedi.start(150)
@@ -505,14 +511,15 @@ class CodeEditor(QPlainTextEdit):
                 self.show_static_suggestions()
 
     def run_jedi_analysis(self):
-        if self.worker and self.worker.isRunning(): return
+        if self.worker and self.worker.isRunning():
+            return
         c = self.textCursor()
-        self.worker = JediWorker(self.toPlainText(), c.blockNumber()+1, c.columnNumber(), self.file_path)
+        self.worker = JediWorker(self.toPlainText(), c.blockNumber() + 1, c.columnNumber(), self.file_path)
         self.worker.finished.connect(self.handle_jedi_results)
         self.worker.start()
 
     def handle_jedi_results(self, r):
-        if not r: 
+        if not r:
             self.completer.popup().hide()
             return
         self.completer.update_jedi_completions(r)
@@ -525,8 +532,8 @@ class CodeEditor(QPlainTextEdit):
         cr = self.cursorRect()
         cr.setWidth(self.completer.popup().sizeHintForColumn(0) + 40)
         self.completer.complete(cr)
-        
-    def update_font(self, s, t): 
+
+    def update_font(self, s, t):
         f = QFont("Consolas", s)
         self.setFont(f)
         self.setTabStopDistance(t * QFontMetricsF(f).horizontalAdvance(' '))
@@ -539,27 +546,27 @@ class CodeEditor(QPlainTextEdit):
         self.update_line_number_area_width(0)
         self.highlight_current_line()
 
-    # [MODIFICADO] Ancho dinámico según número de líneas
     def line_number_area_width(self):
         digits = len(str(max(1, self.blockCount())))
         space = 5 + self.fontMetrics().horizontalAdvance('9') * digits
         return max(20, space)
 
-    def update_line_number_area_width(self, _): 
+    def update_line_number_area_width(self, _):
         self.setViewportMargins(self.line_number_area_width(), 0, 0, 0)
 
     def update_line_number_area(self, r, dy):
-        if dy: self.line_number_area.scroll(0, dy)
-        else: self.line_number_area.update(0, r.y(), self.line_number_area.width(), r.height())
-        if r.contains(self.viewport().rect()): 
+        if dy:
+            self.line_number_area.scroll(0, dy)
+        else:
+            self.line_number_area.update(0, r.y(), self.line_number_area.width(), r.height())
+        if r.contains(self.viewport().rect()):
             self.update_line_number_area_width(0)
 
-    def resizeEvent(self, e): 
+    def resizeEvent(self, e):
         super().resizeEvent(e)
         cr = self.contentsRect()
         self.line_number_area.setGeometry(QRect(cr.left(), cr.top(), self.line_number_area_width(), cr.height()))
 
-    # [MODIFICADO] Pintado de números con nuevo ancho
     def lineNumberAreaPaintEvent(self, event):
         p = QPainter(self.line_number_area)
         c = THEMES.get(self.theme_name, THEMES['Dark'])
@@ -571,8 +578,8 @@ class CodeEditor(QPlainTextEdit):
         while block.isValid() and top <= event.rect().bottom():
             if block.isVisible() and bottom >= event.rect().top():
                 p.setPen(QColor(c['line_fg']))
-                p.drawText(2, int(top), self.line_number_area.width() - 4, 
-                           self.fontMetrics().height(), Qt.AlignRight, str(num+1))
+                p.drawText(2, int(top), self.line_number_area.width() - 4,
+                           self.fontMetrics().height(), Qt.AlignRight, str(num + 1))
             block = block.next()
             top = bottom
             bottom = top + self.blockBoundingRect(block).height()
@@ -601,16 +608,28 @@ class CodeEditor(QPlainTextEdit):
 class EditorTab(QWidget):
     def __init__(self, parent, path=None, content="", theme="Dark", size=12, tabs=4):
         super().__init__(parent)
-        self.file_path, self.saved = path, True
-        ly = QHBoxLayout(self); ly.setContentsMargins(0,0,0,0); ly.setSpacing(0)
-        self.editor = CodeEditor(self, theme, size, tabs); self.editor.setPlainText(content)
-        self.editor.file_path = path 
-        self.minimap = CodeMinimap(self.editor); self.minimap.apply_theme(THEMES.get(theme, THEMES['Dark']))
-        ly.addWidget(self.editor); ly.addWidget(self.minimap)
-        self.editor.textChanged.connect(self._mod); self.editor.textChanged.connect(self.minimap.delayed_sync)
+        self.file_path = path
+        self.saved = True
+        ly = QHBoxLayout(self)
+        ly.setContentsMargins(0, 0, 0, 0)
+        ly.setSpacing(0)
+        self.editor = CodeEditor(self, theme, size, tabs)
+        self.editor.setPlainText(content)
+        self.editor.file_path = path
+        self.minimap = CodeMinimap(self.editor)
+        self.minimap.apply_theme(THEMES.get(theme, THEMES['Dark']))
+        ly.addWidget(self.editor)
+        ly.addWidget(self.minimap)
+        self.editor.textChanged.connect(self._mod)
+        self.editor.textChanged.connect(self.minimap.delayed_sync)
+
     def _mod(self):
-        if self.saved: self.saved = False; self.window().update_tab_title(self)
-    def get_title(self): return os.path.basename(self.file_path) if self.file_path else "Sin título"
+        if self.saved:
+            self.saved = False
+            self.window().update_tab_title(self)
+
+    def get_title(self):
+        return os.path.basename(self.file_path) if self.file_path else "Sin título"
 
 
 # ==============================================================================
@@ -620,47 +639,42 @@ class EditorTab(QWidget):
 class CapiEditor(QMainWindow):
     def __init__(self):
         super().__init__()
-        # [MODIFICADO] 1. Cargar config primero
         self.load_config()
-        
-        # [MODIFICADO] 2. Extraer el nombre de la app dinámicamente
+
         app_settings = self.config.get("app_settings", {})
         self.app_name = app_settings.get("app_name", "Capi Editor Pro")
         self.app_version = app_settings.get("app_version", "")
         self.no_project_message = app_settings.get("no_project_message", "No hay proyecto asignado")
-        
+
         self.current_theme = "Dark"
         self.font_size = 12
         self.tab_width = 4
         self.autosave_enabled = True
         self.minimap_enabled = True
-        # [MODIFICADO] Inicializar sin proyecto (None)
         self.root_dir = None
-        
+
         self.all_themes = list(THEMES.keys())
-        
-        # [MODIFICADO] 3. Aplicar título dinámico
+
         self.setWindowTitle(f"{self.app_name} {self.app_version}".strip())
         self.resize(1200, 800)
         main = QSplitter(Qt.Horizontal)
         self.setCentralWidget(main)
-        
-        # [MODIFICADO] Pasar mensaje personalizado al sidebar
+
         self.sidebar_widget = ProjectSidebarWrapper(self, no_project_message=self.no_project_message)
         self.sidebar_widget.tree_view.clicked.connect(self.on_file_click)
-        self.sidebar_widget.tree_view.activated.connect(self.on_file_click)  # <-- NUEVO: abrir con Enter
+        self.sidebar_widget.tree_view.activated.connect(self.on_file_click)  # Navegación con Enter
         main.addWidget(self.sidebar_widget)
-        
+
         ctr = QWidget()
         vbox = QVBoxLayout(ctr)
-        vbox.setContentsMargins(0,0,0,0)
+        vbox.setContentsMargins(0, 0, 0, 0)
         self.v_split = QSplitter(Qt.Vertical)
         self.tabs = QTabWidget()
         self.tabs.setTabsClosable(True)
         self.tabs.tabCloseRequested.connect(self.close_current_tab)
         self.tabs.currentChanged.connect(self.on_tab_change)
         self.v_split.addWidget(self.tabs)
-        
+
         self.search = SearchWidget(self)
         self.v_split.addWidget(self.search)
         self.term = EditorTerminal(self)
@@ -671,29 +685,31 @@ class CapiEditor(QMainWindow):
         main.setStretchFactor(1, 1)
 
         self.setup_status_bar()
-        # [MODIFICADO] Inicializar sidebar sin proyecto (None)
         self.init_sidebar_for_path(self.root_dir)
         self.load_session()
 
         self.menu_b = MenuBuilder(self)
         self.menu_b.setup_menus()
-        
-        if self.tabs.count() == 0: self.show_welcome_tab()
+
+        if self.tabs.count() == 0:
+            self.show_welcome_tab()
+
         self.as_timer = QTimer(self)
         self.as_timer.timeout.connect(self.auto_save)
         self.as_timer.start(5000)
 
-    # [MODIFICADO] load_config con mejor manejo de errores
+    # ----------------------------------------------------------------------
+    #  CONFIGURACIÓN Y SESIÓN
+    # ----------------------------------------------------------------------
     def load_config(self):
         try:
             config_path = get_app_path("config.json")
-            with open(config_path, 'r', encoding='utf-8') as f: 
+            with open(config_path, 'r', encoding='utf-8') as f:
                 self.config = json.load(f)
-        except Exception as e: 
+        except Exception as e:
             print(f"⚠️ No se pudo cargar config.json: {e}")
             self.config = {}
 
-    # [MODIFICADO] load_session ahora restaura archivos abiertos y pestaña activa
     def load_session(self):
         try:
             session_path = get_app_path("session.json")
@@ -701,43 +717,36 @@ class CapiEditor(QMainWindow):
                 return
             with open(session_path, 'r', encoding='utf-8') as f:
                 d = json.load(f)
-                
-            # Aplicar tema
+
             theme = d.get('theme', 'Dark')
             self.apply_theme(theme)
-            
-            # Establecer directorio raíz si existe
+
             root = d.get('root')
             if root and os.path.exists(root):
                 self.root_dir = root
             else:
                 self.root_dir = None
             self.init_sidebar_for_path(self.root_dir)
-            
-            # Restaurar archivos abiertos
+
             open_files = d.get('open_files', [])
             for file_path in open_files:
                 if os.path.isfile(file_path):
-                    self.open_file(file_path)  # Esto añade la pestaña
-                    
-            # Restaurar pestaña activa (si hay)
+                    self.open_file(file_path)
+
             current_tab = d.get('current_tab', 0)
             if 0 <= current_tab < self.tabs.count():
                 self.tabs.setCurrentIndex(current_tab)
-                
         except Exception as e:
             print(f"⚠️ Error al cargar sesión: {e}")
 
-    # [MODIFICADO] save_session ahora guarda archivos abiertos y pestaña activa
     def save_session(self):
         try:
-            # Recopilar rutas de archivos abiertos (excluyendo pestañas de bienvenida)
             open_files = []
             for i in range(self.tabs.count()):
                 tab = self.tabs.widget(i)
                 if hasattr(tab, 'file_path') and tab.file_path and not getattr(tab, 'is_welcome', False):
                     open_files.append(tab.file_path)
-            
+
             session_data = {
                 "root": self.root_dir,
                 "theme": self.current_theme,
@@ -749,40 +758,52 @@ class CapiEditor(QMainWindow):
         except Exception as e:
             print(f"⚠️ Error al guardar sesión: {e}")
 
-    def create_new_file_global(self):
-        if hasattr(self.sidebar_widget, 'tree_view'): self.sidebar_widget.tree_view.new_item(self.root_dir, False)
-    def create_new_folder_global(self):
-        if hasattr(self.sidebar_widget, 'tree_view'): self.sidebar_widget.tree_view.new_item(self.root_dir, True)
-    def select_folder(self):
-        p = QFileDialog.getExistingDirectory(self, "Abrir Proyecto")
-        if p: 
-            self.init_sidebar_for_path(p)
-            self.save_session()
-        
-    # [MODIFICADO] init_sidebar_for_path maneja None
+    # ----------------------------------------------------------------------
+    #  SIDEBAR Y ARCHIVOS
+    # ----------------------------------------------------------------------
     def init_sidebar_for_path(self, path):
         if path is None:
             self.root_dir = None
-            self.sidebar_widget.set_project_path(None)  # El widget debe manejar None
+            self.sidebar_widget.set_project_path(None)
             self.setWindowTitle(f"{self.app_name} {self.app_version}".strip())
         else:
             self.root_dir = os.path.abspath(path)
             self.sidebar_widget.set_project_path(self.root_dir)
             self.setWindowTitle(f"{self.app_name} {self.app_version} - {os.path.basename(self.root_dir)}")
-        
-    def on_file_click(self, i): 
-        p = self.sidebar_widget.tree_view.model().filePath(i)
-        if os.path.isfile(p): self.open_file(p)
-    
-    # [MODIFICADO] open_file ahora acepta ruta directamente sin diálogo
+
+    def on_file_click(self, index):
+        path = self.sidebar_widget.tree_view.model().filePath(index)
+        if os.path.isfile(path):
+            self.open_file(path)
+
+    def select_folder(self):
+        path = QFileDialog.getExistingDirectory(self, "Abrir Proyecto")
+        if path:
+            self.init_sidebar_for_path(path)
+            self.save_session()
+
+    # ----------------------------------------------------------------------
+    #  PESTAÑAS DEL EDITOR
+    # ----------------------------------------------------------------------
+    def add_tab(self, path=None, content=""):
+        """Añade una nueva pestaña con el editor."""
+        if self.tabs.count() == 1 and getattr(self.tabs.widget(0), 'is_welcome', False):
+            self.tabs.removeTab(0)
+        t = EditorTab(self.tabs, path, content, self.current_theme, self.font_size, self.tab_width)
+        i = self.tabs.addTab(t, t.get_title())
+        self.tabs.setCurrentIndex(i)
+        t.editor.cursorPositionChanged.connect(self.update_status)
+        return t
+
     def open_file(self, path=None):
         if not path:
             path, _ = QFileDialog.getOpenFileName(self, "Abrir")
-        if not path: 
+        if not path:
             return
         for i in range(self.tabs.count()):
             if getattr(self.tabs.widget(i), 'file_path', None) == path:
                 self.tabs.setCurrentIndex(i)
+                self.tabs.currentWidget().editor.setFocus()
                 return
         try:
             with open(path, 'r', encoding='utf-8') as f:
@@ -791,86 +812,100 @@ class CapiEditor(QMainWindow):
                     from pygments.lexers import get_lexer_for_filename
                     lexer = get_lexer_for_filename(path)
                     t.editor.set_code_language(lexer.aliases[0])
-                except: 
+                except:
                     t.editor.set_code_language("text")
-        except Exception as e: 
+                t.editor.setFocus()
+        except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
-    
-    def add_tab(self, path=None, content=""):
-        if self.tabs.count() == 1 and getattr(self.tabs.widget(0), 'is_welcome', False): 
-            self.tabs.removeTab(0)
-        t = EditorTab(self.tabs, path, content, self.current_theme, self.font_size, self.tab_width)
-        i = self.tabs.addTab(t, t.get_title())
-        self.tabs.setCurrentIndex(i)
-        t.editor.cursorPositionChanged.connect(self.update_status)
-        return t
-    
-    def update_status(self):
+
+    def close_current_tab(self, i=None):
+        idx = i if i is not None else self.tabs.currentIndex()
+        if idx != -1:
+            self.tabs.removeTab(idx)
+
+    def on_tab_change(self, i):
         t = self.tabs.currentWidget()
-        if t and not getattr(t, 'is_welcome', False):
-            c = t.editor.textCursor()
-            self.lbl_cursor.setText(f"Ln {c.blockNumber()+1}, Col {c.columnNumber()+1}")
-            self.lbl_lang.setText(t.editor.current_lang.upper())
-    
+        if t:
+            t.editor.apply_theme(self.current_theme)
+            self.update_status()
+
+    def update_tab_title(self, tab):
+        self.tabs.setTabText(self.tabs.indexOf(tab), f"{'*' if not tab.saved else ''}{tab.get_title()}")
+
+    def show_welcome_tab(self):
+        ws = self.config.get('welcome_screen', {})
+        title = ws.get('welcome_title', 'Bienvenido')
+        features = ws.get('features_list', [])
+        content = f"{title}\n\n" + "\n".join(features)
+        t = self.add_tab(None, content)
+        t.is_welcome = True
+        t.editor.setReadOnly(True)
+        t.saved = True
+        self.tabs.setTabText(self.tabs.indexOf(t), "Inicio")
+
+    # ----------------------------------------------------------------------
+    #  BARRA DE ESTADO
+    # ----------------------------------------------------------------------
     def setup_status_bar(self):
         self.status_bar = self.statusBar()
         self.lbl_lang = QLabel("Texto")
         self.lbl_cursor = QLabel("Ln 1, Col 1")
         self.status_bar.addPermanentWidget(self.lbl_lang)
         self.status_bar.addPermanentWidget(self.lbl_cursor)
-    
-    def show_welcome_tab(self):
-        ws = self.config.get('welcome_screen', {})
-        t = self.add_tab(None, f"{ws.get('welcome_title', 'Bienvenido')}\n\n" + "\n".join(ws.get('features_list', [])))
-        t.is_welcome = True
-        t.editor.setReadOnly(True)
-        t.saved = True
-        self.tabs.setTabText(self.tabs.indexOf(t), "Inicio")
-    
-    def auto_save(self): 
+
+    def update_status(self):
+        t = self.tabs.currentWidget()
+        if t and not getattr(t, 'is_welcome', False):
+            c = t.editor.textCursor()
+            self.lbl_cursor.setText(f"Ln {c.blockNumber() + 1}, Col {c.columnNumber() + 1}")
+            self.lbl_lang.setText(t.editor.current_lang.upper())
+
+    # ----------------------------------------------------------------------
+    #  ACCIONES DE ARCHIVO
+    # ----------------------------------------------------------------------
+    def create_new_file_global(self):
+        if hasattr(self.sidebar_widget, 'tree_view'):
+            self.sidebar_widget.tree_view.new_item(self.root_dir, False)
+
+    def create_new_folder_global(self):
+        if hasattr(self.sidebar_widget, 'tree_view'):
+            self.sidebar_widget.tree_view.new_item(self.root_dir, True)
+
+    def save_current_file(self):
+        self.auto_save()
+
+    def save_file_as(self):
+        t = self.tabs.currentWidget()
+        if not t:
+            return
+        start_dir = self.root_dir if self.root_dir else ""
+        path, _ = QFileDialog.getSaveFileName(self, "Guardar", start_dir)
+        if path:
+            t.file_path = path
+            self.save_current_file()
+            t.editor.file_path = path
+            self.update_tab_title(t)
+            try:
+                from pygments.lexers import get_lexer_for_filename
+                t.editor.set_code_language(get_lexer_for_filename(path).aliases[0])
+            except:
+                pass
+
+    def auto_save(self):
         for i in range(self.tabs.count()):
             t = self.tabs.widget(i)
             if not getattr(t, 'is_welcome', False) and t.file_path and not t.saved:
                 try:
-                    with open(t.file_path, 'w', encoding='utf-8') as f: 
+                    with open(t.file_path, 'w', encoding='utf-8') as f:
                         f.write(t.editor.toPlainText())
                         t.saved = True
                         self.update_tab_title(t)
-                except: 
+                except:
                     pass
-    
-    def update_tab_title(self, t): 
-        self.tabs.setTabText(self.tabs.indexOf(t), f"{'*' if not t.saved else ''}{t.get_title()}")
-    
-    def close_current_tab(self, i=None): 
-        idx = i if i is not None else self.tabs.currentIndex()
-        if idx != -1: 
-            self.tabs.removeTab(idx)
-    
-    def on_tab_change(self, i): 
-        t = self.tabs.currentWidget()
-        if t: 
-            t.editor.apply_theme(self.current_theme)
-            self.update_status()
-    
-    def save_current_file(self): 
-        self.auto_save()
-    
-    def save_file_as(self):
-        t = self.tabs.currentWidget()
-        if not t: return
-        p, _ = QFileDialog.getSaveFileName(self, "Guardar", self.root_dir if self.root_dir else "")
-        if p:
-            t.file_path = p
-            self.save_current_file()
-            t.editor.file_path = p
-            self.update_tab_title(t)
-            try: 
-                from pygments.lexers import get_lexer_for_filename
-                t.editor.set_code_language(get_lexer_for_filename(p).aliases[0])
-            except: 
-                pass
 
+    # ----------------------------------------------------------------------
+    #  OTRAS FUNCIONALIDADES
+    # ----------------------------------------------------------------------
     def show_shortcuts_dialog(self):
         dlg = ShortcutsDialog(THEMES.get(self.current_theme, {}), self)
         dlg.exec()
@@ -879,187 +914,193 @@ class CapiEditor(QMainWindow):
         dlg = AboutDialog(self.config, THEMES.get(self.current_theme, {}), icon_path, self)
         dlg.exec()
 
-    def show_global_search(self): 
+    def show_global_search(self):
         GlobalSearchDialog(self.root_dir, self).exec()
-    
-    def toggle_console(self): 
-        self.term.hide() if self.term.isVisible() else self.term.show()
-    
+
+    def toggle_console(self):
+        if self.term.isVisible():
+            self.term.hide()
+        else:
+            self.term.show()
+
     def run_current_file(self):
         t = self.tabs.currentWidget()
-        if t and t.file_path: 
+        if t and t.file_path:
             self.term.run_script(t.file_path)
-    
-    def toggle_autosave(self, e): 
-        self.autosave_enabled = e
-    
-    def toggle_local_search(self): 
+
+    def toggle_autosave(self, enabled):
+        self.autosave_enabled = enabled
+
+    def toggle_local_search(self):
         self.search.setVisible(not self.search.isVisible())
-    
-    def change_font_size(self, s): 
-        self.font_size = s
-        for i in range(self.tabs.count()): 
-            self.tabs.widget(i).editor.update_font(s, self.tab_width)
-    
-    def zoom_in(self): 
+
+    def change_font_size(self, size):
+        self.font_size = size
+        for i in range(self.tabs.count()):
+            self.tabs.widget(i).editor.update_font(size, self.tab_width)
+
+    def zoom_in(self):
         t = self.tabs.currentWidget()
-        if t: 
+        if t:
             t.editor.zoomIn(1)
-    
-    def zoom_out(self): 
+
+    def zoom_out(self):
         t = self.tabs.currentWidget()
-        if t: 
+        if t:
             t.editor.zoomOut(1)
-    
+
     def go_to_line(self):
         t = self.tabs.currentWidget()
         if t:
-            l, ok = QInputDialog.getInt(self, "Ir a", "Línea:", 1, 1, t.editor.blockCount())
-            if ok: 
+            line, ok = QInputDialog.getInt(self, "Ir a", "Línea:", 1, 1, t.editor.blockCount())
+            if ok:
                 c = t.editor.textCursor()
                 c.movePosition(QTextCursor.Start)
-                c.movePosition(QTextCursor.Down, n=l-1)
+                c.movePosition(QTextCursor.Down, n=line - 1)
                 t.editor.setTextCursor(c)
                 t.editor.centerCursor()
                 t.editor.setFocus()
-    
+
     def toggle_minimap_global(self):
         self.minimap_enabled = not self.minimap_enabled
-        for i in range(self.tabs.count()): 
+        for i in range(self.tabs.count()):
             self.tabs.widget(i).minimap.setVisible(self.minimap_enabled)
 
-    def apply_theme(self, n):
-        self.current_theme = n
-        c = THEMES.get(n, THEMES['Dark'])
+    # ----------------------------------------------------------------------
+    #  TEMAS
+    # ----------------------------------------------------------------------
+    def apply_theme(self, name):
+        self.current_theme = name
+        colors = THEMES.get(name, THEMES['Dark'])
         style = f"""
             QMainWindow, QDialog {{
-                background-color: {c['window_bg']};
-                color: {c['fg']};
+                background-color: {colors['window_bg']};
+                color: {colors['fg']};
             }}
             QMenuBar {{
-                background-color: {c['window_bg']};
-                color: {c['fg']};
+                background-color: {colors['window_bg']};
+                color: {colors['fg']};
             }}
             QMenuBar::item:selected {{
-                background-color: {c['select_bg']};
-                color: {c['bg']};
+                background-color: {colors['select_bg']};
+                color: {colors['bg']};
             }}
             QMenu {{
-                background-color: {c['window_bg']};
-                color: {c['fg']};
-                border: 1px solid {c['splitter']};
+                background-color: {colors['window_bg']};
+                color: {colors['fg']};
+                border: 1px solid {colors['splitter']};
             }}
             QMenu::item:selected {{
-                background-color: {c['select_bg']};
-                color: {c['bg']};
+                background-color: {colors['select_bg']};
+                color: {colors['bg']};
             }}
             QTabWidget::pane {{
-                border: 1px solid {c['splitter']};
+                border: 1px solid {colors['splitter']};
             }}
             QTabBar::tab {{
-                background: {c['window_bg']};
-                color: {c['fg']};
+                background: {colors['window_bg']};
+                color: {colors['fg']};
                 padding: 6px 14px;
-                border: 1px solid {c['splitter']};
+                border: 1px solid {colors['splitter']};
             }}
             QTabBar::tab:selected {{
-                background: {c['bg']};
-                border-bottom: 2px solid {c['select_bg']};
+                background: {colors['bg']};
+                border-bottom: 2px solid {colors['select_bg']};
                 font-weight: bold;
             }}
             QStatusBar {{
-                background-color: {c['select_bg']};
-                color: {c['bg'] if n == 'Light' else c['fg']};
+                background-color: {colors['select_bg']};
+                color: {colors['bg'] if name == 'Light' else colors['fg']};
             }}
             QStatusBar QLabel {{
-                color: {c['bg'] if n == 'Light' else c['fg']};
+                color: {colors['bg'] if name == 'Light' else colors['fg']};
             }}
             QPushButton {{
-                background-color: {c['bg']};
-                color: {c['fg']};
-                border: 1px solid {c['splitter']};
+                background-color: {colors['bg']};
+                color: {colors['fg']};
+                border: 1px solid {colors['splitter']};
                 padding: 4px;
             }}
             QPushButton:hover {{
-                background-color: {c['line_bg']};
+                background-color: {colors['line_bg']};
             }}
-            
-            /* Estilos para diálogos estándar */
             QInputDialog {{
-                background-color: {c['window_bg']};
-                color: {c['fg']};
+                background-color: {colors['window_bg']};
+                color: {colors['fg']};
             }}
             QInputDialog QLabel {{
-                color: {c['fg']};
+                color: {colors['fg']};
             }}
             QInputDialog QLineEdit {{
-                background-color: {c['bg']};
-                color: {c['fg']};
-                border: 1px solid {c['splitter']};
+                background-color: {colors['bg']};
+                color: {colors['fg']};
+                border: 1px solid {colors['splitter']};
                 padding: 2px;
             }}
             QInputDialog QPushButton {{
-                background-color: {c['bg']};
-                color: {c['fg']};
-                border: 1px solid {c['splitter']};
+                background-color: {colors['bg']};
+                color: {colors['fg']};
+                border: 1px solid {colors['splitter']};
                 padding: 4px 10px;
             }}
             QInputDialog QPushButton:hover {{
-                background-color: {c['line_bg']};
+                background-color: {colors['line_bg']};
             }}
-            
             QMessageBox {{
-                background-color: {c['window_bg']};
-                color: {c['fg']};
+                background-color: {colors['window_bg']};
+                color: {colors['fg']};
             }}
             QMessageBox QLabel {{
-                color: {c['fg']};
+                color: {colors['fg']};
             }}
             QMessageBox QPushButton {{
-                background-color: {c['bg']};
-                color: {c['fg']};
-                border: 1px solid {c['splitter']};
+                background-color: {colors['bg']};
+                color: {colors['fg']};
+                border: 1px solid {colors['splitter']};
                 padding: 4px 10px;
             }}
             QMessageBox QPushButton:hover {{
-                background-color: {c['line_bg']};
+                background-color: {colors['line_bg']};
             }}
         """
-        
         self.setStyleSheet(style)
         QApplication.instance().setStyleSheet(style)
-        
-        self.sidebar_widget.update_theme(c)
-        self.term.update_theme(c)
+
+        self.sidebar_widget.update_theme(colors)
+        self.term.update_theme(colors)
         for i in range(self.tabs.count()):
-            self.tabs.widget(i).editor.apply_theme(n)
-            self.tabs.widget(i).minimap.apply_theme(c)
-        
+            self.tabs.widget(i).editor.apply_theme(name)
+            self.tabs.widget(i).minimap.apply_theme(colors)
+
         self.save_session()
-        
+
+    # ----------------------------------------------------------------------
+    #  CIERRE
+    # ----------------------------------------------------------------------
     def closeEvent(self, e):
-        if hasattr(self, 'term'): 
+        if hasattr(self, 'term'):
             self.term.stop_process()
         self.save_session()
         e.accept()
 
+
+# ==============================================================================
+#  PUNTO DE ENTRADA
+# ==============================================================================
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    
-    # [NUEVO] Establecer el nombre interno de la aplicación
+
     app.setApplicationName("CapiEditor")
-    
-    # [CORREGIDO] Sin .desktop (Qt ya lo añade automáticamente)
-    app.setDesktopFileName("capi-editor") 
-    
-    # Intento de cargar config inicial para icono de la app a nivel OS
+    app.setDesktopFileName("capi-editor")  # Sin .desktop
+
     try:
         with open(get_app_path("config.json"), 'r', encoding='utf-8') as f:
             cfg = json.load(f)
-            app.setWindowIcon(QIcon(get_app_path(cfg.get("app_settings", {}).get("icon_path", "capieditor.png"))))
+            icon_name = cfg.get("app_settings", {}).get("icon_path", "capieditor.png")
+            app.setWindowIcon(QIcon(get_app_path(icon_name)))
     except:
         app.setWindowIcon(QIcon(icon_path))
-        
+
     window = CapiEditor()
     window.show()
     sys.exit(app.exec())

@@ -30,7 +30,7 @@ class EmojiFileSystemModel(QFileSystemModel):
         return super().data(index, role)
 
 # =========================================================================
-#  2. ÁRBOL DE ARCHIVOS
+#  2. ÁRBOL DE ARCHIVOS (con foco mejorado)
 # =========================================================================
 class FileSidebar(QTreeView):
     def __init__(self, parent=None):
@@ -44,6 +44,7 @@ class FileSidebar(QTreeView):
         self.setAcceptDrops(True)
         self.setDropIndicatorShown(True)
         self.setEditTriggers(QTreeView.NoEditTriggers)
+        self.setFocusPolicy(Qt.StrongFocus)
 
     def update_theme(self, c):
         self.setStyleSheet(f"""
@@ -93,17 +94,16 @@ class FileSidebar(QTreeView):
             except Exception as e: QMessageBox.critical(self, "Error", str(e))
 
 # =========================================================================
-#  3. WRAPPER (MODIFICADO: Recibe mensaje personalizado)
+#  3. WRAPPER (con foco automático al abrir proyecto)
 # =========================================================================
 class ProjectSidebarWrapper(QWidget):
     def __init__(self, parent=None, no_project_message="No hay proyecto asignado"):
         super().__init__(parent)
-        self.no_project_message = no_project_message  # Guardar mensaje
+        self.no_project_message = no_project_message
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
         
-        # Botón de toggle
         self.toggle_btn = QPushButton("▼ Proyecto")
         self.toggle_btn.setObjectName("btn_project")
         self.toggle_btn.setCursor(Qt.PointingHandCursor)
@@ -112,7 +112,6 @@ class ProjectSidebarWrapper(QWidget):
         font = QFont()
         font.setBold(True)
         self.toggle_btn.setFont(font)
-        
         self.toggle_btn.setStyleSheet("""
             QPushButton#btn_project {
                 text-align: left;
@@ -134,8 +133,7 @@ class ProjectSidebarWrapper(QWidget):
         
         self.tree_view = FileSidebar()
         
-        # Label para cuando no hay proyecto
-        self.no_project_label = QLabel(self.no_project_message)  # Usar mensaje
+        self.no_project_label = QLabel(self.no_project_message)
         self.no_project_label.setAlignment(Qt.AlignCenter)
         self.no_project_label.setWordWrap(True)
         self.no_project_label.setStyleSheet("""
@@ -170,6 +168,8 @@ class ProjectSidebarWrapper(QWidget):
             self.spacer.hide()
             self.tree_view.show()
             self.toggle_btn.setText(f"▼ {os.path.basename(self.root_path)}")
+            # Al mostrar, dar foco al árbol
+            self.tree_view.setFocus()
 
     def set_project_path(self, path):
         if path is None:
@@ -177,7 +177,6 @@ class ProjectSidebarWrapper(QWidget):
             self.tree_view.setModel(None)
             self.tree_view.hide()
             self.spacer.hide()
-            self.no_project_label.setText(self.no_project_message)  # Actualizar por si cambió
             self.no_project_label.show()
             self.toggle_btn.setText("No project")
             self.toggle_btn.setEnabled(False)
@@ -201,6 +200,8 @@ class ProjectSidebarWrapper(QWidget):
         self.spacer.hide()
         self.tree_view.show()
         self.toggle_btn.setText(f"▼ {os.path.basename(self.root_path)}")
+        # Dar foco al árbol para navegación inmediata con teclado
+        self.tree_view.setFocus()
 
     def on_directory_loaded(self, loaded_path):
         if self.root_path and os.path.abspath(loaded_path) == self.root_path:
