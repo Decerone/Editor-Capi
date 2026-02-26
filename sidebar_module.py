@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt, QDir
 from PySide6.QtWidgets import (QFileSystemModel, QTreeView, QMenu, QInputDialog, 
                                QMessageBox, QWidget, QVBoxLayout, QPushButton, 
                                QSizePolicy, QLabel)
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QMouseEvent
 
 # =========================================================================
 #  1. MODELO DE DATOS 2.0
@@ -20,14 +20,17 @@ class EmojiFileSystemModel(QFileSystemModel):
         }
 
     def data(self, index, role=Qt.DisplayRole):
-        if role == Qt.DecorationRole: return None 
+        if role == Qt.DecorationRole: 
+            return None 
         if role == Qt.DisplayRole:
             original = super().data(index, role)
             info = self.fileInfo(index)
-            if info.isDir(): return f"📂 {original}"
+            if info.isDir(): 
+                return f"📂 {original}"
             icon = self.icon_map.get(f".{info.suffix().lower()}", "📄")
             return f"{icon} {original}"
         return super().data(index, role)
+
 
 # =========================================================================
 #  2. ÁRBOL DE ARCHIVOS (con foco mejorado)
@@ -45,22 +48,45 @@ class FileSidebar(QTreeView):
         self.setDropIndicatorShown(True)
         self.setEditTriggers(QTreeView.NoEditTriggers)
         self.setFocusPolicy(Qt.StrongFocus)
+        self.setSelectionBehavior(QTreeView.SelectRows)  # Seleccionar filas completas
+
+    def mousePressEvent(self, event: QMouseEvent):
+        super().mousePressEvent(event)
+        self.setFocus()  # Forzar foco al hacer clic
 
     def update_theme(self, c):
         self.setStyleSheet(f"""
-            QTreeView {{ background-color: {c['bg']}; color: {c['fg']}; border: none; font-size: 13px; }}
-            QTreeView::item {{ padding: 4px; }}
-            QTreeView::item:hover {{ background-color: {c['line_bg']}; }}
-            QTreeView::item:selected {{ background-color: {c['select_bg']}; color: white; }}
+            QTreeView {{ 
+                background-color: {c['bg']}; 
+                color: {c['fg']}; 
+                border: none; 
+                font-size: 13px; 
+            }}
+            QTreeView::item {{ 
+                padding: 4px; 
+            }}
+            QTreeView::item:hover {{ 
+                background-color: {c['line_bg']}; 
+            }}
+            QTreeView::item:selected {{ 
+                background-color: {c['select_bg']}; 
+                color: white; 
+            }}
+            QTreeView::item:selected:!active {{ 
+                background-color: {c['select_bg']}; 
+                color: white; 
+            }}
         """)
 
     def show_context_menu(self, pos):
         index = self.indexAt(pos)
         model = self.model()
-        if not model: return
+        if not model: 
+            return
         
         path = model.filePath(index) if index.isValid() else model.rootPath()
-        if os.path.isfile(path): path = os.path.dirname(path)
+        if os.path.isfile(path): 
+            path = os.path.dirname(path)
 
         menu = QMenu()
         menu.setStyleSheet("QMenu { background-color: #2d2d2d; color: white; border: 1px solid #454545; }")
@@ -78,20 +104,33 @@ class FileSidebar(QTreeView):
         if ok and name:
             try:
                 p = os.path.join(path, name)
-                if is_folder: os.makedirs(p, exist_ok=True)
-                else: open(p, 'a').close()
-            except Exception as e: QMessageBox.critical(self, "Error", str(e))
+                if is_folder: 
+                    os.makedirs(p, exist_ok=True)
+                else: 
+                    open(p, 'a').close()
+            except Exception as e: 
+                QMessageBox.critical(self, "Error", str(e))
+
     def rename_item(self, path):
-        old = os.path.basename(path); new, ok = QInputDialog.getText(self, "Renombrar", "Nuevo nombre:", text=old)
+        old = os.path.basename(path)
+        new, ok = QInputDialog.getText(self, "Renombrar", "Nuevo nombre:", text=old)
         if ok and new:
-            try: os.rename(path, os.path.join(os.path.dirname(path), new))
-            except Exception as e: QMessageBox.critical(self, "Error", str(e))
-    def delete_item(self, path):
-        if QMessageBox.question(self, "Eliminar", f"¿Borrar {os.path.basename(path)}?", QMessageBox.Yes|QMessageBox.No) == QMessageBox.Yes:
             try: 
-                if os.path.isdir(path): shutil.rmtree(path)
-                else: os.remove(path)
-            except Exception as e: QMessageBox.critical(self, "Error", str(e))
+                os.rename(path, os.path.join(os.path.dirname(path), new))
+            except Exception as e: 
+                QMessageBox.critical(self, "Error", str(e))
+
+    def delete_item(self, path):
+        if QMessageBox.question(self, "Eliminar", f"¿Borrar {os.path.basename(path)}?", 
+                                QMessageBox.Yes | QMessageBox.No) == QMessageBox.Yes:
+            try: 
+                if os.path.isdir(path): 
+                    shutil.rmtree(path)
+                else: 
+                    os.remove(path)
+            except Exception as e: 
+                QMessageBox.critical(self, "Error", str(e))
+
 
 # =========================================================================
 #  3. WRAPPER (con foco automático al abrir proyecto)
@@ -168,8 +207,7 @@ class ProjectSidebarWrapper(QWidget):
             self.spacer.hide()
             self.tree_view.show()
             self.toggle_btn.setText(f"▼ {os.path.basename(self.root_path)}")
-            # Al mostrar, dar foco al árbol
-            self.tree_view.setFocus()
+            self.tree_view.setFocus()  # Dar foco al árbol al mostrar
 
     def set_project_path(self, path):
         if path is None:
@@ -200,8 +238,7 @@ class ProjectSidebarWrapper(QWidget):
         self.spacer.hide()
         self.tree_view.show()
         self.toggle_btn.setText(f"▼ {os.path.basename(self.root_path)}")
-        # Dar foco al árbol para navegación inmediata con teclado
-        self.tree_view.setFocus()
+        self.tree_view.setFocus()  # Dar foco al árbol tras cargar proyecto
 
     def on_directory_loaded(self, loaded_path):
         if self.root_path and os.path.abspath(loaded_path) == self.root_path:
