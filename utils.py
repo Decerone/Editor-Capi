@@ -1,4 +1,5 @@
-import sys, os
+import sys
+import os
 
 def resource_path(relative_path):
     """Obtiene la ruta absoluta al recurso (útil para PyInstaller)"""
@@ -8,12 +9,21 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
+def get_theme_names():
+    """Devuelve la lista de nombres de temas disponibles."""
+    return list(THEMES.keys())
+
+def get_default_theme():
+    """Devuelve el tema por defecto."""
+    return "Dark"
+
 # ==========================================
 # DEFINICIÓN DE TEMAS (EXPANDIDOS)
 # ==========================================
 THEMES = {
     # --- TEMA OSCURO (VS CODE STYLE) ---
     "Dark": {
+        "name": "Dark",
         "bg": "#1e1e1e",
         "window_bg": "#252526",
         "fg": "#d4d4d4",
@@ -40,6 +50,7 @@ THEMES = {
 
     # --- TEMA CLARO (CLEAN STYLE) ---
     "Light": {
+        "name": "Light",
         "bg": "#f4f4f3",
         "window_bg": "#e9e9e9",
         "fg": "#333333",
@@ -66,6 +77,7 @@ THEMES = {
 
     # --- TEMA MONOKAI (VIBRANT) ---
     "Monokai": {
+        "name": "Monokai",
         "bg": "#272822",
         "window_bg": "#1e1f1c",
         "fg": "#f8f8f2",
@@ -92,6 +104,7 @@ THEMES = {
 
     # --- TEMA DRACULA (PASTEL DARK) ---
     "Dracula": {
+        "name": "Dracula",
         "bg": "#282a36",
         "window_bg": "#21222c",
         "fg": "#f8f8f2",

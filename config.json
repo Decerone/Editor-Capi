@@ -3,7 +3,9 @@
         "app_name": "Rodent Coffee",
         "app_version": "v 1.0.8",
         "icon_path": "capieditor.png",
-        "no_project_message": "No hay proyecto asignado"
+        "no_project_message": "No hay proyecto asignado",
+        "language": "es"
+
     },
     "about": {
         "app_name": "Capi Editor - Rodent Coffee",

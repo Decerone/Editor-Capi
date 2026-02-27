@@ -59,7 +59,7 @@ try:
     from minimap import CodeMinimap
     from search_module import SearchWidget, GlobalSearchDialog
     from menu_module import MenuBuilder
-    from sidebar_module import ProjectSidebarWrapper
+    from sidebar_module import ProjectSidebar
     from shortcuts import SHORTCUTS_DATA
 except Exception as e:
     traceback.print_exc()
@@ -660,7 +660,7 @@ class CapiEditor(QMainWindow):
         main = QSplitter(Qt.Horizontal)
         self.setCentralWidget(main)
 
-        self.sidebar_widget = ProjectSidebarWrapper(self, no_project_message=self.no_project_message)
+        self.sidebar_widget = ProjectSidebar(self, no_project_message=self.no_project_message)
         self.sidebar_widget.tree_view.clicked.connect(self.on_file_click)
         self.sidebar_widget.tree_view.activated.connect(self.on_file_click)  # Navegación con Enter
         main.addWidget(self.sidebar_widget)

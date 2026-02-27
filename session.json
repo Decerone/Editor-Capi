@@ -1,9 +1,6 @@
 {
   "root": "/home/decerone/Escritorio/Editor_Capi",
-  "theme": "Monokai",
-  "open_files": [
-    "/home/decerone/Escritorio/Editor_Capi/autocomplete.py",
-    "/home/decerone/Escritorio/Editor_Capi/build.sh"
-  ],
-  "current_tab": 1
+  "theme": "Dark",
+  "open_files": [],
+  "current_tab": -1
 }

@@ -3,61 +3,79 @@
     "function", "var", "let", "const", "return", "if", "else", "for", "while",
     "switch", "case", "break", "default", "try", "catch", "class", "extends",
     "new", "this", "import", "export", "from", "async", "await", "console",
-    "log", "document", "window", "null", "true", "false", "undefined"
+    "log", "document", "window", "null", "true", "false", "undefined", "typeof",
+    "instanceof", "delete", "void", "yield", "in", "of", "super", "static",
+    "get", "set", "finally", "continue", "do", "debugger", "with"
   ],
-  "js": [
-    "function", "var", "let", "const", "return", "if", "else", "for", "while",
-    "switch", "case", "break", "default", "try", "catch", "class", "extends",
-    "new", "this", "import", "export", "from", "async", "await", "console",
-    "log", "document", "window", "null", "true", "false", "undefined"
-  ],
+  
   "html": [
-    "html","!","DOCTYPE","head", "body", "div", "span", "p", "h1", "h2", "a", "img", "ul",
-    "li","table", "tr", "td", "form", "input", "button", "script", "style",
-    "link", "meta", "title", "header", "footer", "nav", "section", "main",
-    "class", "id", "src", "href", "type", "rel", "width", "height","p",
-    "br", "hr", "em", "strong", "small", "blockquote", "pre", "code", "figure",
-    "figcaption", "audio", "video", "canvas", "svg", "iframe", "label", "select",
-    "option", "textarea", "fieldset", "legend", "datalist", "output", "progress", "meter", 
-    "h1", "h2", "h3", "h4", "h5", "h6", "b", "i", "u", "sub", "sup", "mark", "del", "ins",  
-    "abbr", "address", "cite", "dfn", "kbd", "samp", "var", "wbr",  
-    "time", "details", "summary", "dialog", "data", "bdi", "bdo", "ruby", "rt", "rp",
+    "html", "head", "body", "div", "span", "p", "h1", "h2", "h3", "h4", "h5", "h6",
+    "a", "img", "ul", "li", "ol", "table", "tr", "td", "th", "form", "input",
+    "button", "script", "style", "link", "meta", "title", "header", "footer",
+    "nav", "section", "article", "aside", "main", "class", "id", "src", "href",
+    "type", "rel", "width", "height", "br", "hr", "em", "strong", "small",
+    "blockquote", "pre", "code", "figure", "figcaption", "audio", "video",
+    "canvas", "svg", "iframe", "label", "select", "option", "textarea",
+    "fieldset", "legend", "datalist", "output", "progress", "meter", "b", "i",
+    "u", "sub", "sup", "mark", "del", "ins", "abbr", "address", "cite", "dfn",
+    "kbd", "samp", "var", "time", "details", "summary", "dialog", "data",
     "picture", "source", "track", "map", "area", "embed", "object", "param",
-    "noscript", "template", "td", "th", "tbody", "thead", "tfoot", "col", "colgroup","input", "button", "select", "option", "textarea", 
-    "form", "label", "fieldset", "legend"
+    "noscript", "template", "tbody", "thead", "tfoot", "col", "colgroup",
+    "fieldset", "legend", "!DOCTYPE"
   ],
+  
   "css": [
-    "body", "div", "span", "color", "background", "margin", "padding",
-    "font-size", "border", "display", "flex", "grid", "width", "height",
-    "position", "absolute", "relative", "top", "left", "right", "bottom",
-    "hover", "active", "focus", "media", "align-items", "justify-content"
+    "color", "background", "margin", "padding", "font", "border", "display",
+    "flex", "grid", "width", "height", "position", "absolute", "relative",
+    "fixed", "sticky", "top", "left", "right", "bottom", "hover", "active",
+    "focus", "media", "align-items", "justify-content", "text-align",
+    "font-size", "font-weight", "font-family", "line-height", "letter-spacing",
+    "text-decoration", "text-transform", "box-shadow", "border-radius",
+    "transition", "transform", "animation", "keyframes", "opacity", "z-index",
+    "overflow", "float", "clear", "visibility", "cursor", "list-style",
+    "table-layout", "border-collapse", "empty-cells", "caption-side",
+    "content", "counter-increment", "counter-reset", "quotes", "outline",
+    "resize", "direction", "unicode-bidi", "word-break", "word-wrap"
   ],
+  
   "php": [
-    "echo", "!","print", "return", "function", "class", "public", "private",
-    "protected", "if", "else", "while", "foreach", "as", "new", "this",
-    "include", "require", "use", "namespace", "array", "null", "true", "false","isset", "empty",
-    "var", "const", "static", "try", "catch", "finally", "throw", "global", "self", "parent", "instanceof",
-    "switch", "case", "break", "default", "continue", "die", "exit",  "list", "unset", "yield", "trait", "interface", "abstract", "final",
-    "clone", "declare", "goto", "eval", "print_r", "var_dump",  "str_replace", "array_merge", "count", "strlen", "in_array", "sort", "rsort", "asort", "ksort", "shuffle",
-    "implode", "explode", "json_encode", "json_decode", "file_get_contents", "file_put_contents", "fopen", "fclose", "fread", "fwrite", "feof", "mkdir", "rmdir", "unlink",
-    "header", "setcookie", "session_start", "session_destroy", "password_hash", "password_verify",
-    "filter_var", "htmlspecialchars", "mysqli_connect", "mysqli_query", "PDO", "prepare", "execute", "fetch", "bindParam", "bindValue",    "interface", "extends", "implements", "namespace", "use", "trait", "abstract", "final", "static", "const", "var", "public", "protected", "private",
-    "function", "return", "if", "else", "elseif", "switch", "case", "default", "break", "continue", "for", "foreach", "while", "do", "try", "catch", "finally", "throw", "new",
-    "this", "self", "parent", "instanceof", "clone", "declare", "goto", "eval","class", "interface", "extends", "implements", "namespace", "use", "trait", "abstract", "final", "static", "const", "var", "public", "protected", "private",
-    "function", "return", "if", "else", "elseif", "switch", "case", "default", "break", "continue", "for", "foreach", " while", "do", "try", "catch", "finally", "throw", "new",
-    "this", "self", "parent", "instanceof", "clone", "declare", "goto", "eval" 
+    "echo", "print", "return", "function", "class", "public", "private",
+    "protected", "if", "else", "elseif", "while", "foreach", "for", "as",
+    "new", "this", "include", "require", "use", "namespace", "array", "null",
+    "true", "false", "isset", "empty", "var", "const", "static", "try",
+    "catch", "finally", "throw", "global", "self", "parent", "instanceof",
+    "switch", "case", "break", "default", "continue", "die", "exit",
+    "list", "unset", "yield", "trait", "interface", "abstract", "final",
+    "clone", "declare", "goto", "eval", "print_r", "var_dump", "str_replace",
+    "array_merge", "count", "strlen", "in_array", "sort", "rsort", "asort",
+    "ksort", "shuffle", "implode", "explode", "json_encode", "json_decode",
+    "file_get_contents", "file_put_contents", "fopen", "fclose", "fread",
+    "fwrite", "feof", "mkdir", "rmdir", "unlink", "header", "setcookie",
+    "session_start", "session_destroy", "password_hash", "password_verify",
+    "filter_var", "htmlspecialchars", "mysqli_connect", "mysqli_query",
+    "PDO", "prepare", "execute", "fetch", "bindParam", "bindValue",
+    "extends", "implements", "and", "or", "xor", "clone", "yield"
   ],
+  
   "sql": [
     "SELECT", "FROM", "WHERE", "INSERT", "INTO", "VALUES", "UPDATE", "SET",
-    "DELETE", "CREATE", "TABLE", "AlTER", "DROP", "INDEX", "JOIN", "INNER",
-    "LEFT", "RIGHT", "ON", "GROUP", "BY", "ORDER", "LIMIT", "AND", "OR", "NOT",
-    "NULL", "IS", "IN", "LIKE", "DISTINCT", "HAVING", "AS", "UNION", "TRIGGER", 
-    "PROCEDURE", "VIEW", "CURSOR", "DECLARE", "BEGIN", "END", "COMMIT", "ROLLBACK"
-    
+    "DELETE", "CREATE", "TABLE", "ALTER", "DROP", "INDEX", "JOIN", "INNER",
+    "LEFT", "RIGHT", "FULL", "OUTER", "ON", "GROUP", "BY", "ORDER", "LIMIT",
+    "AND", "OR", "NOT", "NULL", "IS", "IN", "LIKE", "DISTINCT", "HAVING",
+    "AS", "UNION", "ALL", "EXISTS", "ANY", "SOME", "BETWEEN", "CASE",
+    "WHEN", "THEN", "ELSE", "END", "PRIMARY", "FOREIGN", "KEY", "CONSTRAINT",
+    "DEFAULT", "AUTO_INCREMENT", "INT", "VARCHAR", "CHAR", "TEXT", "DATE",
+    "DATETIME", "TIMESTAMP", "BOOLEAN", "DECIMAL", "FLOAT", "DOUBLE",
+    "TRIGGER", "PROCEDURE", "FUNCTION", "VIEW", "CURSOR", "DECLARE",
+    "BEGIN", "END", "COMMIT", "ROLLBACK", "SAVEPOINT", "GRANT", "REVOKE",
+    "DATABASE", "SCHEMA", "USE", "SHOW", "DESCRIBE", "EXPLAIN", "OPTIMIZE"
   ],
+  
   "rust": [
     "fn", "let", "mut", "pub", "use", "mod", "struct", "enum", "impl",
     "match", "if", "else", "loop", "while", "for", "in", "return", "crate",
-    "self", "super", "async", "await", "type", "where", "unsafe", "true", "false"
+    "self", "super", "async", "await", "type", "where", "unsafe", "true",
+    "false", "const", "static", "trait", "dyn", "move", "ref", "mut",
+    "box", "as", "break", "continue", "extern", "macro_rules", "union"
   ]
 }

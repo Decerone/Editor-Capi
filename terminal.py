@@ -1,4 +1,6 @@
-import sys, os, platform
+import sys
+import os
+import platform
 from PySide6.QtCore import Qt, QProcess, QTimer
 from PySide6.QtGui import QFont, QTextCursor
 from PySide6.QtWidgets import QPlainTextEdit
@@ -9,19 +11,20 @@ class EditorTerminal(QPlainTextEdit):
         self.process = None
         self.base_prompt = "capi"
         self.current_folder = os.path.basename(os.getcwd())
-        self.prompt_safe_pos = 0 
+        self.prompt_safe_pos = 0
         self.path_marker = "__CAPI_PATH__"
-        self.is_running_script = False # Control de flujo para evitar ruido
+        self.is_running_script = False
+        self.initialized = False  # Bandera para evitar múltiples inicializaciones
         
-        # Temporizador inteligente para el prompt
+        # Temporizador para el prompt
         self.prompt_timer = QTimer(self)
         self.prompt_timer.setSingleShot(True)
-        self.prompt_timer.interval = 120 # Un poco más lento para estabilidad visual
+        self.prompt_timer.setInterval(120)
         self.prompt_timer.timeout.connect(self.print_prompt_now)
         
-        self.prompt_color = "#50fa7b" # Verde Esmeralda neón
+        self.prompt_color = "#50fa7b"  # Verde Esmeralda neón
         
-        # --- CONFIGURACIÓN DE UI ---
+        # Configuración de UI
         self.setFont(QFont("Consolas", 10))
         self.setUndoRedoEnabled(False)
         self.setLineWrapMode(QPlainTextEdit.NoWrap)
@@ -34,72 +37,114 @@ class EditorTerminal(QPlainTextEdit):
             }
         """)
         
-        self.start_process()
+        # Iniciar proceso después de un pequeño delay para asegurar que todo esté listo
+        QTimer.singleShot(100, self.start_process)
 
     def get_prompt_html(self):
         """Genera el prompt con color y la carpeta actual."""
-        folder_text = f".{self.current_folder}" if self.current_folder else ""
-        return f'<span style="color:{self.prompt_color}; font-weight:bold;">{self.base_prompt}{folder_text}-> </span>'
+        folder_text = f"/{self.current_folder}" if self.current_folder else ""
+        return f'<span style="color:{self.prompt_color}; font-weight:bold;">{self.base_prompt}{folder_text} → </span>'
 
     def start_process(self):
         """Inicia el proceso del sistema (Bash o CMD)."""
+        if self.initialized:
+            return
+        self.initialized = True
+        
         if self.process:
-            self.process.kill()
-            self.process.waitForFinished(100)
+            self.cleanup_process()
         
         self.process = QProcess(self)
         self.process.setProcessChannelMode(QProcess.MergedChannels)
         self.process.readyReadStandardOutput.connect(self.on_output_received)
-        # Sincronización: Detectar cuando termina una tarea pesada
-        self.process.finished.connect(self._on_finished)
+        self.process.readyReadStandardError.connect(self.on_output_received)  # También capturar stderr
+        self.process.finished.connect(self.on_process_finished)
+        self.process.errorOccurred.connect(self.on_process_error)
         
         system = platform.system()
         try:
-            shell = os.environ.get("COMSPEC", "cmd.exe") if system == "Windows" else os.environ.get("SHELL", "/bin/bash")
+            if system == "Windows":
+                shell = os.environ.get("COMSPEC", "cmd.exe")
+                args = []
+            else:
+                shell = os.environ.get("SHELL", "/bin/bash")
+                args = ["--login"]  # Modo login para mejor entorno
+            
             self.process.setProgram(shell)
+            if args:
+                self.process.setArguments(args)
+            
             self.process.setWorkingDirectory(os.getcwd())
             self.process.start()
-            self.prompt_timer.start(200) 
+            
+            # Verificar que el proceso inició correctamente
+            if not self.process.waitForStarted(1000):
+                raise Exception("No se pudo iniciar el proceso")
+            
+            self.prompt_timer.start(200)
+            
         except Exception as e:
-            self.append_text_safe(f"Error de sistema: {e}\n")
+            self.append_text_safe(f"❌ Error al iniciar terminal: {str(e)}\n")
+            self.initialized = False
 
-    def _on_finished(self):
-        """Reiniciar estado al terminar un script."""
+    def on_process_finished(self, exit_code, exit_status):
+        """Maneja cuando el proceso termina."""
+        self.append_text_safe(f"\n[Proceso terminado con código {exit_code}]\n")
         self.is_running_script = False
-        self.prompt_timer.start(100)
+        self.process = None
+        self.initialized = False
+        # Intentar reiniciar después de un momento
+        QTimer.singleShot(1000, self.start_process)
+
+    def on_process_error(self, error):
+        """Maneja errores del proceso."""
+        self.append_text_safe(f"\n❌ Error en proceso: {error}\n")
+        self.cleanup_process()
 
     def on_output_received(self):
         """Gestión de salida del sistema y detección de rutas."""
-        if not self.process: return
+        if not self.process:
+            return
+        
         try:
             data = self.process.readAllStandardOutput().data().decode('utf-8', errors='replace')
-            if not data: return
+            if not data:
+                # Intentar leer error channel si no hay stdout
+                data = self.process.readAllStandardError().data().decode('utf-8', errors='replace')
+            
+            if not data:
+                return
 
-            # Si detectamos nuestra marca de ruta y no estamos en medio de un input() de Python
+            # Procesar salida
             if self.path_marker in data and not self.is_running_script:
                 parts = data.split(self.path_marker)
                 real_output = parts[0]
+                
                 # Extraer nueva carpeta
                 try:
                     path_info = parts[1].strip().split('\n')[0].strip()
-                    if path_info:
+                    if path_info and os.path.exists(path_info):
                         self.current_folder = os.path.basename(path_info)
-                except: pass
+                except Exception:
+                    pass
                 
                 if real_output.strip():
-                     self.append_text_safe(real_output)
+                    self.append_text_safe(real_output)
             else:
                 # Salida normal
                 self.append_text_safe(data)
             
-            # Solo mostrar el prompt si el proceso no está bloqueado por un script
+            # Solo mostrar el prompt si el proceso no está bloqueado
             if not self.is_running_script:
-                self.prompt_timer.start(150) 
-        except: pass
+                self.prompt_timer.start(150)
+                
+        except Exception as e:
+            print(f"Error procesando salida: {e}")
 
     def print_prompt_now(self):
         """Dibuja el prompt visual y bloquea la posición."""
-        if self.is_running_script: return 
+        if self.is_running_script or not self.process:
+            return
         
         cursor = self.textCursor()
         cursor.movePosition(QTextCursor.End)
@@ -112,6 +157,7 @@ class EditorTerminal(QPlainTextEdit):
         cursor.insertHtml(self.get_prompt_html())
         self.moveCursor(QTextCursor.End)
         self.prompt_safe_pos = self.textCursor().position()
+        self.ensureCursorVisible()
 
     def append_text_safe(self, text):
         """Escribe texto del sistema de forma segura."""
@@ -119,49 +165,79 @@ class EditorTerminal(QPlainTextEdit):
         cursor.movePosition(QTextCursor.End)
         cursor.insertText(text)
         self.setTextCursor(cursor)
+        self.ensureCursorVisible()
         # Actualizar frontera
         self.prompt_safe_pos = self.textCursor().position()
 
     def execute_command(self, cmd, is_from_run=False):
-        """Ejecuta comandos con Alias inteligentes y rastreo de ruta."""
+        """Ejecuta comandos con alias inteligentes y rastreo de ruta."""
         clean_cmd = cmd.strip()
         if not clean_cmd:
             self.prompt_timer.start(10)
             return
-            
-        # Alias: Corrección de Python en Linux/Mac
+        
+        # Verificar que el proceso existe y está corriendo
+        if not self.process or self.process.state() != QProcess.Running:
+            self.start_process()
+            QTimer.singleShot(500, lambda: self.execute_command(cmd, is_from_run))
+            return
+        
+        # Alias para Linux/Mac
         if platform.system() != "Windows":
             if clean_cmd.startswith("python "):
                 clean_cmd = clean_cmd.replace("python ", "python3 ", 1)
             elif clean_cmd == "python":
                 clean_cmd = "python3"
+            elif clean_cmd == "pip":
+                clean_cmd = "pip3"
 
         # Comandos internos de la UI
         if clean_cmd.lower() in ["cls", "clear"]:
             self.clear()
             self.prompt_timer.start(10)
             return
+        
+        if clean_cmd.lower() == "exit":
+            self.append_text_safe("\n[Saliendo de la terminal...]\n")
+            self.cleanup_process()
+            return
 
-        if self.process and self.process.state() == QProcess.Running:
+        try:
             if is_from_run:
-                self.is_running_script = True # Evitar interferencia de prompt
+                self.is_running_script = True
                 full_cmd = clean_cmd
             else:
                 # Comandos manuales: Inyectar rastreador de ruta
-                sep = "&" if platform.system() == "Windows" else ";"
-                var = "%CD%" if platform.system() == "Windows" else "$PWD"
-                full_cmd = f"{clean_cmd} {sep} echo {self.path_marker}{var}"
+                if platform.system() == "Windows":
+                    full_cmd = f"{clean_cmd} & echo {self.path_marker}%CD%"
+                else:
+                    full_cmd = f"{clean_cmd}; echo {self.path_marker}$PWD"
             
             self.append_text_safe("\n")
             self.process.write((full_cmd + "\n").encode('utf-8'))
-        else:
-            self.start_process()
+            
+        except Exception as e:
+            self.append_text_safe(f"\n❌ Error ejecutando comando: {e}\n")
+            self.is_running_script = False
 
     def run_script(self, script_path):
         """Llamado desde el botón RUN del editor."""
-        py_exe = "python3" if platform.system() != "Windows" else "python"
-        cmd = f'{py_exe} -u "{script_path}"'
-        self.append_text_safe(cmd) # Mostrar el comando que se lanza
+        if not os.path.exists(script_path):
+            self.append_text_safe(f"\n❌ El archivo no existe: {script_path}\n")
+            return
+        
+        # Usar python3 en Linux/Mac, python en Windows
+        if platform.system() == "Windows":
+            py_exe = "python"
+        else:
+            py_exe = "python3"
+        
+        # Asegurar que la ruta está entre comillas si tiene espacios
+        if ' ' in script_path:
+            script_path = f'"{script_path}"'
+        
+        cmd = f'{py_exe} -u {script_path}'
+        self.append_text_safe(f"\n🚀 Ejecutando: {cmd}\n")
         self.execute_command(cmd, is_from_run=True)
 
     def keyPressEvent(self, e):
@@ -176,53 +252,91 @@ class EditorTerminal(QPlainTextEdit):
             cursor.clearSelection()
             self.setTextCursor(cursor)
             
-            if self.is_running_script:
-                # Si un script está pidiendo input(), enviamos crudo
-                self.process.write((cmd_text + "\n").encode('utf-8'))
+            if cmd_text:
+                if self.is_running_script:
+                    # Si un script está pidiendo input(), enviamos crudo
+                    if self.process and self.process.state() == QProcess.Running:
+                        self.process.write((cmd_text + "\n").encode('utf-8'))
+                else:
+                    # Si es la terminal libre, procesamos comando
+                    self.execute_command(cmd_text)
             else:
-                # Si es la terminal libre, procesamos comando
-                self.execute_command(cmd_text)
+                # Comando vacío, solo mostrar prompt
+                self.prompt_timer.start(10)
             return
         
         # CTRL+C: Matar proceso actual
         if e.modifiers() == Qt.ControlModifier and e.key() == Qt.Key_C:
-            self.cleanup_process()
-            self.insertPlainText("^C\n")
-            self.start_process()
+            self.append_text_safe("\n^C\n")
+            if self.is_running_script:
+                self.is_running_script = False
+                if self.process and self.process.state() == QProcess.Running:
+                    if platform.system() == "Windows":
+                        self.process.write(b"\x03\n")  # Ctrl+C en Windows
+                    else:
+                        self.process.terminate()
+                        QTimer.singleShot(1000, lambda: self.process.kill() if self.process else None)
+            else:
+                self.cleanup_process()
+                QTimer.singleShot(100, self.start_process)
             return
 
         # Bloqueo de borrado (Backspace)
         if e.key() == Qt.Key_Backspace:
-            if cursor.position() <= self.prompt_safe_pos: return 
+            if cursor.position() <= self.prompt_safe_pos:
+                return
         
         # Bloqueo de escritura en zona protegida
         if cursor.position() < self.prompt_safe_pos:
             cursor.movePosition(QTextCursor.End)
             self.setTextCursor(cursor)
-            
+        
+        # Permitir Ctrl+V para pegar
+        if e.modifiers() == Qt.ControlModifier and e.key() == Qt.Key_V:
+            clipboard = QApplication.clipboard()
+            text = clipboard.text()
+            if text:
+                self.insertPlainText(text)
+            return
+        
         super().keyPressEvent(e)
 
     def cleanup_process(self):
         """Cierre forzado y limpio."""
         if self.process:
             try:
-                self.process.kill()
-                self.process.waitForFinished(100)
+                self.process.terminate()
+                if not self.process.waitForFinished(1000):
+                    self.process.kill()
+                    self.process.waitForFinished(500)
                 self.process.deleteLater()
-            except: pass
+            except Exception:
+                pass
             self.process = None
+        self.initialized = False
+        self.is_running_script = False
 
     def stop_process(self):
         """Cerrar desde el menú."""
         self.cleanup_process()
         self.clear()
+        self.prompt_safe_pos = 0
 
     def update_theme(self, colors):
+        """Actualiza el tema de la terminal."""
+        bg = colors.get('bg', '#1e1e1e')
+        fg = colors.get('fg', '#cccccc')
         self.setStyleSheet(f"""
             QPlainTextEdit {{ 
-                background-color: {colors['bg']}; 
-                color: {colors['fg']}; 
+                background-color: {bg}; 
+                color: {fg}; 
                 border: none; 
                 padding: 5px;
+                border-top: 1px solid {colors.get('splitter', '#3e3e42')};
             }}
         """)
+        # Mantener el color del prompt independiente del tema
+        if colors.get('name') == 'Light':
+            self.prompt_color = "#0066cc"  # Azul más visible en fondo claro
+        else:
+            self.prompt_color = "#50fa7b"  # Verde neón para temas oscuros
