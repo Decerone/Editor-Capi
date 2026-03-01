@@ -1,25 +1,43 @@
+# -*- coding: utf-8 -*-
+"""
+utils.py
+
+Configuraciones, temas y utilidades para CapiEditor Pro.
+"""
+
 import sys
 import os
 
+
+# ==============================================================================
+#  FUNCIONES DE UTILIDAD
+# ==============================================================================
+
 def resource_path(relative_path):
-    """Obtiene la ruta absoluta al recurso (útil para PyInstaller)"""
+    """
+    Obtiene la ruta absoluta al recurso (útil para PyInstaller).
+    """
     try:
         base_path = sys._MEIPASS
     except Exception:
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
+
 def get_theme_names():
     """Devuelve la lista de nombres de temas disponibles."""
     return list(THEMES.keys())
+
 
 def get_default_theme():
     """Devuelve el tema por defecto."""
     return "Dark"
 
-# ==========================================
-# DEFINICIÓN DE TEMAS (EXPANDIDOS)
-# ==========================================
+
+# ==============================================================================
+#  DEFINICIÓN DE TEMAS (EXPANDIDOS)
+# ==============================================================================
+
 THEMES = {
     # --- TEMA OSCURO (VS CODE STYLE) ---
     "Dark": {
@@ -129,3 +147,10 @@ THEMES = {
         }
     }
 }
+
+
+# ==============================================================================
+#  NOTA: La línea problemática ha sido eliminada.
+#  Si necesitas probar el hover con color rojo, hazlo desde el código principal
+#  o desde el método update_theme de FileTreeView.
+# ==============================================================================

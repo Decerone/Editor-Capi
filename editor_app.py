@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # ==============================================================================
-#  CAPI EDITOR PRO - VERSIÓN FINAL (CORREGIDA Y COMPLETA)
+#  CAPI EDITOR PRO - VERSIÓN FINAL (FOCOS CORREGIDOS)
 # ==============================================================================
 
 import sys
@@ -358,6 +358,29 @@ class CodeEditor(QPlainTextEdit):
         self.update_line_number_area_width(0)
         self.apply_theme(theme)
 
+        self.setFocusPolicy(Qt.StrongFocus)
+
+    def insert_completion(self, completion):
+        if not completion:
+            return
+        tc = self.textCursor()
+        doc = self.document()
+        pos = tc.position()
+        text = doc.toPlainText()
+
+        start_pos = pos
+        while start_pos > 0:
+            char = text[start_pos - 1]
+            if char.isalnum() or char == '_':
+                start_pos -= 1
+            else:
+                break
+
+        tc.setPosition(start_pos)
+        tc.setPosition(pos, QTextCursor.KeepAnchor)
+        tc.insertText(completion)
+        self.setTextCursor(tc)
+
     def set_code_language(self, lang_alias):
         if lang_alias in ['js', 'javascript']:
             lang = 'javascript'
@@ -417,27 +440,6 @@ class CodeEditor(QPlainTextEdit):
             elif key in (Qt.Key_Up, Qt.Key_Down, Qt.Key_PageUp, Qt.Key_PageDown):
                 return False
         return super().eventFilter(obj, event)
-
-    def insert_completion(self, completion):
-        if not completion:
-            return
-        tc = self.textCursor()
-        doc = self.document()
-        pos = tc.position()
-        text = doc.toPlainText()
-
-        start_pos = pos
-        while start_pos > 0:
-            char = text[start_pos - 1]
-            if char.isalnum() or char == '_':
-                start_pos -= 1
-            else:
-                break
-
-        tc.setPosition(start_pos)
-        tc.setPosition(pos, QTextCursor.KeepAnchor)
-        tc.insertText(completion)
-        self.setTextCursor(tc)
 
     def get_dynamic_words(self):
         text = self.toPlainText()
@@ -662,7 +664,9 @@ class CapiEditor(QMainWindow):
 
         self.sidebar_widget = ProjectSidebar(self, no_project_message=self.no_project_message)
         self.sidebar_widget.tree_view.clicked.connect(self.on_file_click)
-        self.sidebar_widget.tree_view.activated.connect(self.on_file_click)  # Navegación con Enter
+        self.sidebar_widget.tree_view.activated.connect(self.on_file_click)
+        # Forzar foco en el árbol después de cualquier clic (incluso en carpetas)
+        self.sidebar_widget.tree_view.clicked.connect(lambda: self.sidebar_widget.tree_view.setFocus())
         main.addWidget(self.sidebar_widget)
 
         ctr = QWidget()
@@ -772,7 +776,12 @@ class CapiEditor(QMainWindow):
             self.setWindowTitle(f"{self.app_name} {self.app_version} - {os.path.basename(self.root_dir)}")
 
     def on_file_click(self, index):
-        path = self.sidebar_widget.tree_view.model().filePath(index)
+        # Obtener el modelo del tree_view (que es el proxy)
+        model = self.sidebar_widget.tree_view.model()
+        # Mapear el índice del proxy al índice del modelo fuente (QFileSystemModel)
+        source_index = model.mapToSource(index)
+        # Obtener la ruta usando el modelo fuente
+        path = model.sourceModel().filePath(source_index)
         if os.path.isfile(path):
             self.open_file(path)
 
@@ -786,7 +795,6 @@ class CapiEditor(QMainWindow):
     #  PESTAÑAS DEL EDITOR
     # ----------------------------------------------------------------------
     def add_tab(self, path=None, content=""):
-        """Añade una nueva pestaña con el editor."""
         if self.tabs.count() == 1 and getattr(self.tabs.widget(0), 'is_welcome', False):
             self.tabs.removeTab(0)
         t = EditorTab(self.tabs, path, content, self.current_theme, self.font_size, self.tab_width)
@@ -864,11 +872,11 @@ class CapiEditor(QMainWindow):
     #  ACCIONES DE ARCHIVO
     # ----------------------------------------------------------------------
     def create_new_file_global(self):
-        if hasattr(self.sidebar_widget, 'tree_view'):
+        if hasattr(self.sidebar_widget, 'tree_view') and self.root_dir:
             self.sidebar_widget.tree_view.new_item(self.root_dir, False)
 
     def create_new_folder_global(self):
-        if hasattr(self.sidebar_widget, 'tree_view'):
+        if hasattr(self.sidebar_widget, 'tree_view') and self.root_dir:
             self.sidebar_widget.tree_view.new_item(self.root_dir, True)
 
     def save_current_file(self):
@@ -915,7 +923,10 @@ class CapiEditor(QMainWindow):
         dlg.exec()
 
     def show_global_search(self):
-        GlobalSearchDialog(self.root_dir, self).exec()
+        if self.root_dir:
+            GlobalSearchDialog(self.root_dir, self).exec()
+        else:
+            QMessageBox.information(self, "Información", "No hay proyecto abierto. Abre un proyecto primero.")
 
     def toggle_console(self):
         if self.term.isVisible():
@@ -938,6 +949,14 @@ class CapiEditor(QMainWindow):
         self.font_size = size
         for i in range(self.tabs.count()):
             self.tabs.widget(i).editor.update_font(size, self.tab_width)
+
+    def change_tab_width(self, width):
+        self.tab_width = width
+        for i in range(self.tabs.count()):
+            tab = self.tabs.widget(i)
+            if hasattr(tab, 'editor'):
+                tab.editor.tab_width = width
+                tab.editor.update_font(self.font_size, width)
 
     def zoom_in(self):
         t = self.tabs.currentWidget()
@@ -1091,7 +1110,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     app.setApplicationName("CapiEditor")
-    app.setDesktopFileName("capi-editor")  # Sin .desktop
+    app.setDesktopFileName("capi-editor")
 
     try:
         with open(get_app_path("config.json"), 'r', encoding='utf-8') as f:
