@@ -4,7 +4,8 @@
 """
 Módulo de barra lateral (Sidebar) para Capi Editor Pro.
 Proporciona un explorador de archivos con árbol, botón de proyecto,
-menús contextuales en español, iconos personalizados y solo vista de nombres.
+menús contextuales en español, iconos personalizados por extensión,
+solo vista de nombres y movimiento de archivos al arrastrar.
 """
 
 import os
@@ -18,10 +19,52 @@ from PySide6.QtWidgets import (
 )
 
 
+class MovableFileSystemModel(QFileSystemModel):
+    """
+    Modelo de sistema de archivos que permite mover archivos al arrastrar.
+    Se reimplementan los métodos necesarios para soportar acciones de copiar y mover.
+    """
+
+    def supportedDropActions(self):
+        """Indica que se soportan acciones de copiar y mover."""
+        return Qt.CopyAction | Qt.MoveAction
+
+    def dropMimeData(self, data, action, row, column, parent):
+        """
+        Reimplementado para que MoveAction mueva los archivos en lugar de copiarlos.
+        """
+        if action == Qt.MoveAction:
+            urls = data.urls()
+            if not urls:
+                return False
+
+            dest_path = self.filePath(parent) if parent.isValid() else self.rootPath()
+            if not dest_path or not os.path.isdir(dest_path):
+                return False
+
+            success = True
+            for url in urls:
+                src_path = url.toLocalFile()
+                if not src_path or not os.path.exists(src_path):
+                    continue
+                # Evitar mover sobre sí mismo (mismo directorio)
+                if os.path.dirname(src_path) == dest_path:
+                    continue
+                dest_file = os.path.join(dest_path, os.path.basename(src_path))
+                try:
+                    shutil.move(src_path, dest_file)
+                except Exception as e:
+                    print(f"Error moviendo {src_path} a {dest_file}: {e}")
+                    success = False
+            return success
+        else:
+            return super().dropMimeData(data, action, row, column, parent)
+
+
 class FileSystemProxyModel(QSortFilterProxyModel):
     """
     Modelo proxy que personaliza los iconos según la extensión del archivo.
-    También puede filtrar si es necesario (aquí no se filtra).
+    Para las extensiones no incluidas en el mapa, se usa el icono por defecto del sistema.
     """
 
     def __init__(self, icon_map=None, parent=None):
@@ -30,15 +73,12 @@ class FileSystemProxyModel(QSortFilterProxyModel):
 
     def data(self, index, role=Qt.DisplayRole):
         if role == Qt.DecorationRole:
-            # Obtener la ruta del archivo desde el modelo fuente
             source_index = self.mapToSource(index)
             file_path = self.sourceModel().filePath(source_index)
             if not os.path.isdir(file_path):
-                # Es archivo: obtener extensión
                 ext = os.path.splitext(file_path)[1].lower().lstrip('.')
                 if ext in self.icon_map:
                     return self.icon_map[ext]
-        # Para cualquier otro rol, usar el modelo fuente
         return super().data(index, role)
 
 
@@ -49,7 +89,6 @@ class ProjectSidebar(QWidget):
     y operaciones de archivo/carpeta.
     """
 
-    # Señal opcional para notificar cambios en el proyecto (no usada en core actual)
     projectChanged = Signal(str)
 
     def __init__(self, parent, no_project_message="No hay proyecto asignado"):
@@ -59,115 +98,96 @@ class ProjectSidebar(QWidget):
         self.current_root = None
         self.source_model = None
         self.proxy_model = None
-        self.clipboard_path = None      # Para copiar/cortar interno
-        self.cut_mode = False            # True si es cortar, False si es copiar
-        self.icon_map = {}                # Mapa extensión -> QIcon
+        self.clipboard_path = None
+        self.cut_mode = False
+        self.icon_map = {}
 
         self.load_icons()
         self.setup_ui()
         self.setup_connections()
 
     def load_icons(self):
-        """
-        Escanea la carpeta 'icons' en el directorio base de la aplicación
-        y carga los iconos disponibles. Se esperan archivos con nombre 'py.png',
-        'txt.png', etc. (la extensión del archivo indica el tipo).
-        """
         basedir = os.path.dirname(os.path.abspath(__file__))
         icons_dir = os.path.join(basedir, "icons")
         if not os.path.isdir(icons_dir):
-            # Si no existe la carpeta, no hay iconos personalizados
+            try:
+                os.mkdir(icons_dir)
+                print(f"📁 Creada carpeta 'icons' en {basedir}. Coloca ahí tus iconos (ej: py.png, php.png).")
+            except Exception as e:
+                print(f"⚠️ No se pudo crear la carpeta 'icons': {e}")
             return
 
         for file in os.listdir(icons_dir):
             file_path = os.path.join(icons_dir, file)
             if os.path.isfile(file_path):
-                # El nombre del archivo (sin extensión) será la extensión a mapear
                 name, ext = os.path.splitext(file)
-                # Soportamos png, svg, ico, etc. (Qt puede cargar varios formatos)
                 icon = QIcon(file_path)
                 if not icon.isNull():
                     self.icon_map[name.lower()] = icon
+                    print(f"✅ Icono cargado para extensión .{name.lower()}")
+                else:
+                    print(f"⚠️ No se pudo cargar el icono: {file_path}")
 
     def setup_ui(self):
-        """Crea los componentes visuales: botón y árbol."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Botón que muestra el nombre del proyecto
         self.project_btn = QToolButton()
         self.project_btn.setText(self.no_project_message)
         self.project_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
-        self.project_btn.setPopupMode(QToolButton.InstantPopup)  # Permite menú al hacer clic
+        self.project_btn.setPopupMode(QToolButton.InstantPopup)
         self.project_btn.setAutoRaise(True)
-        self.project_btn.setFocusPolicy(Qt.NoFocus)  # El foco va al árbol
+        self.project_btn.setFocusPolicy(Qt.NoFocus)
         layout.addWidget(self.project_btn)
 
-        # Árbol de archivos
         self._tree_view = QTreeView()
         self._tree_view.setHeaderHidden(True)
-        self._tree_view.setEditTriggers(QTreeView.EditKeyPressed)  # F2 para renombrar
+        self._tree_view.setEditTriggers(QTreeView.EditKeyPressed)
         self._tree_view.setContextMenuPolicy(Qt.CustomContextMenu)
         self._tree_view.setSelectionMode(QTreeView.ExtendedSelection)
         self._tree_view.setDragEnabled(True)
         self._tree_view.setAcceptDrops(True)
         self._tree_view.setDropIndicatorShown(True)
+        self._tree_view.setDefaultDropAction(Qt.MoveAction)  # Acción por defecto: mover
         layout.addWidget(self._tree_view)
 
-        # Crear modelo fuente (QFileSystemModel)
-        self.source_model = QFileSystemModel()
-        self.source_model.setReadOnly(False)   # Permitir operaciones de escritura
+        # Usar modelo con soporte de movimiento
+        self.source_model = MovableFileSystemModel()
+        self.source_model.setReadOnly(False)
 
-        # Crear modelo proxy con los iconos personalizados
         self.proxy_model = FileSystemProxyModel(self.icon_map, self)
         self.proxy_model.setSourceModel(self.source_model)
 
-        # Asignar el modelo proxy al árbol (solo una vez)
         self._tree_view.setModel(self.proxy_model)
 
     def setup_connections(self):
-        """Conecta señales internas."""
         self._tree_view.customContextMenuRequested.connect(self.show_context_menu)
 
     # ----------------------------------------------------------------------
-    # API pública llamada desde el core
+    # API pública
     # ----------------------------------------------------------------------
     def set_project_path(self, path):
-        """
-        Establece la ruta raíz del proyecto.
-        Si path es None, limpia la vista y muestra el mensaje por defecto.
-        """
         self.current_root = path
 
         if path and os.path.isdir(path):
-            # Proyecto válido
             self.source_model.setRootPath(path)
             root_index = self.source_model.index(path)
             proxy_root = self.proxy_model.mapFromSource(root_index)
             self._tree_view.setRootIndex(proxy_root)
 
-            # Ocultar todas las columnas excepto la primera (nombre)
             for col in range(1, self.source_model.columnCount()):
                 self._tree_view.setColumnHidden(col, True)
 
-            # Mostrar nombre de la carpeta en el botón
             self.project_btn.setText(os.path.basename(path))
-            # Expandir nivel raíz opcionalmente
             self._tree_view.expand(proxy_root)
         else:
-            # Sin proyecto: mantener el modelo pero sin raíz (vacío)
             self._tree_view.setRootIndex(QModelIndex())
             self.project_btn.setText(self.no_project_message)
 
-        # Notificar cambio (opcional)
         self.projectChanged.emit(path if path else "")
 
     def update_theme(self, colors):
-        """
-        Aplica los colores del tema actual al sidebar y al árbol.
-        colors es un diccionario con claves como 'bg', 'fg', 'select_bg', etc.
-        """
         style = f"""
             QWidget {{
                 background-color: {colors.get('window_bg', '#252526')};
@@ -210,19 +230,15 @@ class ProjectSidebar(QWidget):
         self.setStyleSheet(style)
 
     # ----------------------------------------------------------------------
-    # Menú contextual (clic derecho)
+    # Menú contextual
     # ----------------------------------------------------------------------
     def show_context_menu(self, pos):
-        """
-        Muestra un menú contextual en español para el elemento bajo el cursor.
-        """
         proxy_index = self._tree_view.indexAt(pos)
         if not proxy_index.isValid() and self.current_root is None:
-            return  # Sin proyecto, no hay acciones
+            return
 
         menu = QMenu(self)
 
-        # Acciones comunes (crear nuevo archivo/carpeta)
         new_file_action = QAction("Nuevo archivo", self)
         new_file_action.triggered.connect(lambda: self.new_item(self.get_target_dir(proxy_index), is_dir=False))
         menu.addAction(new_file_action)
@@ -233,14 +249,11 @@ class ProjectSidebar(QWidget):
 
         menu.addSeparator()
 
-        # Si hay un elemento seleccionado, agregar acciones específicas
         if proxy_index.isValid():
-            # Obtener la ruta real usando el modelo fuente
             source_index = self.proxy_model.mapToSource(proxy_index)
             path = self.source_model.filePath(source_index)
             is_dir = self.source_model.isDir(source_index)
 
-            # Copiar / Cortar / Pegar
             copy_action = QAction("Copiar", self)
             copy_action.triggered.connect(lambda: self.copy_path(path))
             menu.addAction(copy_action)
@@ -249,7 +262,6 @@ class ProjectSidebar(QWidget):
             cut_action.triggered.connect(lambda: self.cut_path(path))
             menu.addAction(cut_action)
 
-            # Pegar solo si hay algo en el portapapeles interno
             if self.clipboard_path is not None:
                 paste_action = QAction("Pegar", self)
                 paste_action.triggered.connect(lambda: self.paste_into(self.get_target_dir(proxy_index)))
@@ -257,7 +269,6 @@ class ProjectSidebar(QWidget):
 
             menu.addSeparator()
 
-            # Renombrar / Eliminar
             rename_action = QAction("Renombrar", self)
             rename_action.triggered.connect(lambda: self._tree_view.edit(proxy_index))
             menu.addAction(rename_action)
@@ -268,10 +279,8 @@ class ProjectSidebar(QWidget):
 
             menu.addSeparator()
 
-            # Abrir en terminal (opcional)
             if is_dir:
                 open_terminal_action = QAction("Abrir en terminal", self)
-                # Conectar a función del core (si existe)
                 if hasattr(self.parent, 'term') and hasattr(self.parent.term, 'change_directory'):
                     open_terminal_action.triggered.connect(lambda: self.parent.term.change_directory(path))
                 menu.addAction(open_terminal_action)
@@ -279,11 +288,6 @@ class ProjectSidebar(QWidget):
         menu.exec(self._tree_view.viewport().mapToGlobal(pos))
 
     def get_target_dir(self, proxy_index):
-        """
-        Devuelve el directorio destino para operaciones como nuevo archivo/carpeta.
-        Si proxy_index es válido y es carpeta, usa esa ruta; si es archivo, usa su directorio padre;
-        si no hay índice, usa la raíz del proyecto.
-        """
         if self.current_root is None:
             return None
         if proxy_index.isValid():
@@ -300,16 +304,10 @@ class ProjectSidebar(QWidget):
     # Operaciones de archivo
     # ----------------------------------------------------------------------
     def new_item(self, parent_path, is_dir=False):
-        """
-        Crea un nuevo archivo o carpeta en parent_path.
-        Si parent_path es None o no existe, no hace nada.
-        """
         if not parent_path or not os.path.isdir(parent_path):
             return
 
         if is_dir:
-            # Carpeta: usar QFileSystemModel.mkdir
-            # Generar nombre por defecto
             base_name = "nueva_carpeta"
             folder_name = base_name
             counter = 1
@@ -323,7 +321,6 @@ class ProjectSidebar(QWidget):
                 new_proxy_index = self.proxy_model.mapFromSource(new_source_index)
                 self._tree_view.edit(new_proxy_index)
         else:
-            # Archivo: crear archivo vacío y luego editar
             base_name = "nuevo_archivo.txt"
             file_name = base_name
             counter = 1
@@ -336,7 +333,6 @@ class ProjectSidebar(QWidget):
             try:
                 with open(file_path, 'w', encoding='utf-8') as f:
                     f.write("")
-                # Buscar el índice en el modelo fuente y mapearlo al proxy
                 source_index = self.source_model.index(file_path)
                 if source_index.isValid():
                     proxy_index = self.proxy_model.mapFromSource(source_index)
@@ -345,27 +341,20 @@ class ProjectSidebar(QWidget):
                 QMessageBox.critical(self, "Error", f"No se pudo crear el archivo:\n{e}")
 
     def copy_path(self, path):
-        """Almacena la ruta para copiar."""
         self.clipboard_path = path
         self.cut_mode = False
 
     def cut_path(self, path):
-        """Almacena la ruta para cortar."""
         self.clipboard_path = path
         self.cut_mode = True
 
     def paste_into(self, target_dir):
-        """
-        Pega (copia o mueve) el elemento almacenado en el portapapeles interno
-        al directorio target_dir.
-        """
         if not self.clipboard_path or not target_dir or not os.path.exists(self.clipboard_path):
             return
 
         src = self.clipboard_path
         dst = os.path.join(target_dir, os.path.basename(src))
 
-        # Evitar sobrescribir sin preguntar
         if os.path.exists(dst):
             reply = QMessageBox.question(
                 self, "Confirmar",
@@ -374,7 +363,6 @@ class ProjectSidebar(QWidget):
             )
             if reply == QMessageBox.No:
                 return
-            # Eliminar destino para poder copiar/mover
             try:
                 if os.path.isdir(dst):
                     shutil.rmtree(dst)
@@ -386,11 +374,9 @@ class ProjectSidebar(QWidget):
 
         try:
             if self.cut_mode:
-                # Mover
                 shutil.move(src, dst)
-                self.clipboard_path = None  # Limpiar portapapeles tras cortar
+                self.clipboard_path = None
             else:
-                # Copiar
                 if os.path.isdir(src):
                     shutil.copytree(src, dst)
                 else:
@@ -399,11 +385,9 @@ class ProjectSidebar(QWidget):
             QMessageBox.critical(self, "Error", f"No se pudo pegar:\n{e}")
 
     def delete_path(self, path):
-        """Elimina el archivo o carpeta (con confirmación)."""
         if not os.path.exists(path):
             return
 
-        # Preguntar confirmación
         reply = QMessageBox.question(
             self, "Confirmar eliminación",
             f"¿Está seguro de eliminar '{os.path.basename(path)}'?",
@@ -421,14 +405,12 @@ class ProjectSidebar(QWidget):
             QMessageBox.critical(self, "Error", f"No se pudo eliminar:\n{e}")
 
     # ----------------------------------------------------------------------
-    # Métodos para integración con el core (usados en create_new_file_global)
+    # Integración con el core
     # ----------------------------------------------------------------------
     def new_item_at_root(self, is_dir=False):
-        """Crea un nuevo elemento en la raíz del proyecto."""
         if self.current_root:
             self.new_item(self.current_root, is_dir)
 
-    # Propiedad tree_view para que el core pueda acceder directamente y conectar señales
     @property
     def tree_view(self):
         return self._tree_view
